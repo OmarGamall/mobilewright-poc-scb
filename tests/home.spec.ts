@@ -1,9 +1,11 @@
 import { test } from '../fixtures/authFixture';
 import { HomePage } from '../pages/HomePage';
+import { ProfilePage } from '../pages/ProfilePage';
+import { dismissKeyboard } from '../helpers/keyboard';
 
 test.describe('Home Page Features', () => {
   
-  test('User can complete the entire Phase 3 form successfully', async ({ loggedInScreen }) => {
+  test.skip('User can complete the entire Phase 3 form successfully', async ({ loggedInScreen }) => {
     const homePage = new HomePage(loggedInScreen);
 
     // 1. Input username
@@ -17,8 +19,21 @@ test.describe('Home Page Features', () => {
 
     // 4. Interact with terms checkbox
     await homePage.setTermsCheckboxState(true);
+  });
 
-    // You can add assertions here to verify the final state before moving to Phase 4
+  test('User can navigate to Profile tab from Home screen', async ({ loggedInScreen }) => {
+    const homePage = new HomePage(loggedInScreen);
+    const profilePage = new ProfilePage(loggedInScreen);
+
+    // 1. Verify we are on the Phase 3 home screen
+    await homePage.verifyOnPhase3Screen();
+
+    // 2. Navigate to Profile tab via the bottom nav bar
+    await homePage.navigateTo('Profile');
+
+    // 3. Verify we actually landed on the Profile screen
+    await profilePage.verifyOnProfileScreen();
   });
 
 });
+

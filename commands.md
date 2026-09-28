@@ -36,11 +36,52 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
   npx mobilewright doctor
   ```
 
-- **Dump UI Tree (Accessibility JSON format):**
+- **Extract UI Tree (filtered — for POM building):**
+  ```bash
+  # Navigate to the target screen on your device first, then:
+  npm run extract -- <screen-slug>
+
+  # Examples
+  npm run extract -- home
+  npm run extract -- login
+  npm run extract -- profile-edit
+  npm run extract -- home-with-egypt-selected
+  ```
+  *Outputs two evidence files to `.ui-evidence/`:*
+  ```
+  ✅ UI Evidence saved for 'home':
+     Silver: .ui-evidence/home-tree.json       ← full filtered tree (debug fallback)
+     Gold:   .ui-evidence/home-locators.yml    ← flat locator summary (AI POM builder input)
+     Token reduction: ~94% (34154 bytes raw → 2035 bytes combined)
+  ```
+
+- **Dump UI Tree (raw, unfiltered — rarely needed directly):**
   ```bash
   npx mobilecli dump ui --device AU3N025B20000393
   ```
-  *This dumps the JSON object of the accessibility tree using Mobilewright's underlying CLI tool.*
+  *This dumps the raw unfiltered accessibility tree. Use `npm run extract` instead for POM building.*
+
+---
+
+## UI Tree Extraction — AI Prompt Examples
+
+When using the `mobilewright-ui-tree-extractor` agent skill, use these prompts:
+
+```
+# Build a new POM from scratch
+"Extract the UI tree for the Profile screen (needs login, then tap Profile tab)
+and build the ProfilePage POM."
+
+# Update locators after a UI change
+"The Home screen UI changed. Re-extract the tree and update HomePage.ts locators only."
+
+# You already have the tree — paste it directly
+"Here is my home-locators.yml: [paste content]. Build the HomePage POM from this."
+
+# Logic-only refactor — no extraction needed at all
+"Refactor HomePage.ts to combine inputUsername and selectCountry into a single
+fillForm(formData) composite method. No locator changes."
+```
 
 ---
 

@@ -1,11 +1,12 @@
 import type { Screen } from '@mobilewright/core';
 import { DatePicker, type PickerDate } from '../components/DatePicker';
 import { Checkbox } from '../components/Checkbox';
+import { BottomNavBar, type NavTab } from '../components/BottomNavBar';
 
 /**
  * @fileoverview Page Object Model for the Home screen.
  * Handles the Phase 3 home screen form including text inputs, country selection,
- * checkboxes, and date pickers.
+ * checkboxes, date pickers, and bottom navigation.
  */
 export class HomePage {
   readonly screen: Screen;
@@ -44,9 +45,15 @@ export class HomePage {
     return this.screen.getByRole('button', { name: /HOME_DATE_PICKER/ });
   }
 
+  private navBar() {
+    return new BottomNavBar(this.screen);
+  }
+
   // ============================================================================
   // ACTIONS
   // ============================================================================
+
+  // Tier 1 — Composite actions
 
   /**
    * Fills the username field.
@@ -57,10 +64,10 @@ export class HomePage {
   }
 
   /**
-   * Opens the country dropdown and selects a specific country.
-   * @param country - The country to select ('Egypt' or 'India').
+   * Opens the country dropdown and selects a specific country by its display name.
+   * @param country - The exact visible country name as shown in the dropdown.
    */
-  async selectCountry(country: 'Egypt' | 'India'): Promise<void> {
+  async selectCountry(country: string): Promise<void> {
     await this.getCountryDropdown().tap();
     await this.getCountryOption(country).tap();
   }
@@ -82,6 +89,15 @@ export class HomePage {
     await new DatePicker(this.screen).pick(date);
   }
 
+  /**
+   * Taps the specified bottom navigation tab to navigate to it.
+   * Delegates to the shared BottomNavBar component.
+   * @param tab - The tab to navigate to ('Home', 'Profile', or 'Menu').
+   */
+  async navigateTo(tab: NavTab): Promise<void> {
+    await this.navBar().navigateTo(tab);
+  }
+
   // ============================================================================
   // VERIFY METHODS
   // ============================================================================
@@ -91,6 +107,14 @@ export class HomePage {
    */
   async verifyOnPhase3Screen(): Promise<void> {
     await this.getPhase3Label().waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Verifies that the specified bottom nav tab is visible.
+   * @param tab - The tab expected to be visible in the nav bar.
+   */
+  async verifyNavTabVisible(tab: NavTab): Promise<void> {
+    await this.navBar().verifyTabVisible(tab);
   }
 
   // ============================================================================

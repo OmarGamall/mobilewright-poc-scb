@@ -28,9 +28,13 @@ mobilewright/
 ├── models/         → TypeScript interfaces and type definitions
 ├── helpers/        → Reusable cross-screen helper functions
 ├── utils/          → Framework-level utilities (ui-tree-extractor, etc.)
+├── scripts/        → CLI scripts (extract-ui, etc.)
 ├── config/         → Environment config (reads from .env)
 ├── plans/          → Implementation plan files (required before any code change)
 ├── bug-reports/    → Generated bug reports
+├── .ui-evidence/   → Generated accessibility tree evidence (gitignored)
+│   ├── <screen>-locators.yml  ← Gold: flat locator summary (AI input)
+│   └── <screen>-tree.json     ← Silver: full filtered tree (debug fallback)
 ├── .agents/        → Agent skills and rules
 │   └── skills/
 │       ├── mobilewright-pom-builder/       → Build/modify Page Objects
@@ -93,19 +97,34 @@ npx mobilewright show-report
 ## Useful Commands
 
 ```bash
+# Run the UI Tree Extractor — navigate to the screen on your device first
+npm run extract -- <screen-slug>
+npm run extract -- home
+npm run extract -- login
+npm run extract -- profile-edit
+
 # Open the Mobilewright Inspector (live screen interaction)
 npx mobilewright inspect
-
-# Dump the live UI accessibility tree to .ui-evidence/
-# (used before building new Page Objects — see mobilewright-ui-tree-extractor skill)
-npx mobilecli dump ui --device <DEVICE_ID>
 
 # List connected ADB devices
 adb devices
 
 # Check system readiness
 npx mobilewright doctor
+
+# Dump raw accessibility tree (unfiltered — rarely needed directly)
+npx mobilecli dump ui --device <DEVICE_ID>
 ```
+
+---
+
+## 🤖 AI-First Automation
+
+This framework supports autonomous, AI-driven Page Object Model (POM) generation using
+AI Agent skills. Instead of writing POMs by hand, ask the agent to build them — it captures
+live device evidence, validates it, and writes fully standards-compliant TypeScript.
+
+👉 **Full guide:** [AI Integration — UI Tree Extraction & POM Generation](docs/ai-integration.md)
 
 ---
 
@@ -123,7 +142,6 @@ npx mobilewright doctor
 ## Key Conventions
 
 - **No `screen.*` calls in spec files** — all interactions go through Page Object methods.
-- **Use `.tap()` not `.click()`** — this is a mobile framework.
 - **Locators are private factory methods** — never class fields.
 - **Locator priority:** `getByLabel > getByRole > getByText`
 - **Before any code change** — write a plan in `plans/` and get approval first (see `AGENTS.md`).
