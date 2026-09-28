@@ -6,3 +6,6 @@ blob-report/
 .DS_Store
 dist/
 build/
+
+# Mobile-specific
+.ui-evidence/

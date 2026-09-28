@@ -9,10 +9,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
     "@mobilewright/test": "^0.0.61",
     "@types/node": "^26.6.3",
+    "dotenv": "^18.0.4",
     "mobilewright": "^0.0.61",
     "typescript": "^7.0.2"
   }

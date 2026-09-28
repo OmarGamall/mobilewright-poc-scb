@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@pages/*":       ["./pages/*"],
+      "@components/*":  ["./components/*"],
+      "@fixtures/*":    ["./fixtures/*"],
+      "@models/*":      ["./models/*"],
+      "@helpers/*":     ["./helpers/*"],
+      "@config/*":      ["./config/*"],
+      "@data/*":        ["./data/*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}
