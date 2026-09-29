@@ -1,12 +1,9 @@
-import { test } from '../fixtures/authFixture';
-import { HomePage } from '../pages/HomePage';
-import { ProfilePage } from '../pages/ProfilePage';
+import { test } from '../fixtures/pagesFixture';
 import { dismissKeyboard } from '../helpers/keyboard';
 
 test.describe('Home Page Features', () => {
   
-  test.skip('User can complete the entire Phase 3 form successfully', async ({ loggedInScreen }) => {
-    const homePage = new HomePage(loggedInScreen);
+  test('User can complete the entire Phase 3 form successfully', async ({ homePage }) => {
 
     // 1. Input username
     await homePage.inputUsername('omar_phase3');
@@ -21,9 +18,7 @@ test.describe('Home Page Features', () => {
     await homePage.setTermsCheckboxState(true);
   });
 
-  test('User can navigate to Profile tab from Home screen', async ({ loggedInScreen }) => {
-    const homePage = new HomePage(loggedInScreen);
-    const profilePage = new ProfilePage(loggedInScreen);
+  test('User can navigate to Profile tab from Home screen', async ({ homePage, profilePage }) => {
 
     // 1. Verify we are on the Phase 3 home screen
     await homePage.verifyOnPhase3Screen();
