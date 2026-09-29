@@ -1,6 +1,7 @@
 node_modules/
 test-results/
 playwright-report/
+mobilewright-report/
 blob-report/
 .env
 .DS_Store
@@ -10,3 +11,4 @@ build/
 # Mobile-specific
 .ui-evidence/
 plans/
+bug-reports/

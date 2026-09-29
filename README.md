@@ -20,27 +20,28 @@ End-to-end test automation framework for a Flutter Android application, built wi
 
 ```
 mobilewright/
-├── tests/          → *.spec.ts files — no direct screen.* calls
-├── pages/          → Page Object classes (one per app screen)
-├── components/     → Reusable Flutter widget wrappers (DatePicker, Checkbox, …)
-├── fixtures/       → Mobilewright custom fixtures (auth state, etc.)
-├── data/           → Static test data (users, constants)
-├── models/         → TypeScript interfaces and type definitions
-├── helpers/        → Reusable cross-screen helper functions
-├── utils/          → Framework-level utilities (ui-tree-extractor, etc.)
-├── scripts/        → CLI scripts (extract-ui, etc.)
-├── config/         → Environment config (reads from .env)
-├── plans/          → Implementation plan files (required before any code change)
-├── bug-reports/    → Generated bug reports
+├── .agents/        → Agent skills and rules
+│   └── skills/
+│       ├── mobilewright-bug-reporter/      → Generate bug reports from failures
+│       ├── mobilewright-pom-builder/       → Build/modify Page Objects
+│       ├── mobilewright-script-reviewer/   → Review test code quality
+│       └── mobilewright-ui-tree-extractor/ → Capture live screen accessibility tree
 ├── .ui-evidence/   → Generated accessibility tree evidence (gitignored)
 │   ├── <screen>-locators.yml  ← Gold: flat locator summary (AI input)
 │   └── <screen>-tree.json     ← Silver: full filtered tree (debug fallback)
-├── .agents/        → Agent skills and rules
-│   └── skills/
-│       ├── mobilewright-pom-builder/       → Build/modify Page Objects
-│       ├── mobilewright-bug-reporter/      → Generate bug reports from failures
-│       ├── mobilewright-script-reviewer/   → Review test code quality
-│       └── mobilewright-ui-tree-extractor/ → Capture live screen accessibility tree
+├── bug-reports/    → Generated bug reports
+├── components/     → Reusable Flutter widget wrappers (DatePicker, Checkbox, …)
+├── config/         → Environment config (reads from .env)
+├── data/           → Static test data (users, constants)
+├── docs/           → Project documentation and findings
+├── fixtures/       → Mobilewright custom fixtures (auth state, etc.)
+├── helpers/        → Reusable cross-screen helper functions
+├── models/         → TypeScript interfaces and type definitions
+├── pages/          → Page Object classes (one per app screen)
+├── plans/          → Implementation plan files (required before any code change)
+├── scripts/        → CLI scripts (extract-ui, etc.)
+├── tests/          → *.spec.ts files — no direct screen.* calls
+├── utils/          → Framework-level utilities (ui-tree-extractor, etc.)
 ├── mobilewright.config.ts  → Test runner configuration
 └── tsconfig.json           → TypeScript config with path aliases
 ```
