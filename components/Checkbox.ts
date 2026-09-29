@@ -1,4 +1,5 @@
 import type { Screen } from '@mobilewright/core';
+import { step } from '../utils/step';
 
 type Locator = ReturnType<Screen['getByRole']>;
 
@@ -17,6 +18,7 @@ export class Checkbox {
   /**
    * Checks the checkbox if it is not already checked.
    */
+  @step('Check checkbox')
   async check(): Promise<void> {
     const checked = await this.locator.isChecked();
     if (!checked) {
@@ -27,6 +29,7 @@ export class Checkbox {
   /**
    * Unchecks the checkbox if it is currently checked.
    */
+  @step('Uncheck checkbox')
   async uncheck(): Promise<void> {
     const checked = await this.locator.isChecked();
     if (checked) {
@@ -38,6 +41,7 @@ export class Checkbox {
    * Sets the checkbox to the desired state explicitly.
    * @param targetState - True to check, false to uncheck.
    */
+  @step('Set checkbox state to {0}')
   async setState(targetState: boolean): Promise<void> {
     if (targetState) {
       await this.check();

@@ -1,4 +1,5 @@
 import type { Screen } from '@mobilewright/core';
+import { step } from '../utils/step';
 
 type Locator = ReturnType<Screen['getByRole']>;
 
@@ -111,6 +112,7 @@ export class DatePicker {
    * @param date - The target date to be picked (year, month 1-12, day).
    * @throws {Error} If the provided date is invalid or UI elements are not found.
    */
+  @step('Pick date {0}')
   async pick(date: PickerDate): Promise<void> {
     assertValidDate(date);
     await this.waitUntilOpen();
@@ -130,6 +132,7 @@ export class DatePicker {
    * Waits for the date picker bottom sheet to open and become visible.
    * Throws an error if the date picker title is not found.
    */
+  @step('Wait for date picker to open')
   async waitUntilOpen(): Promise<void> {
     await this.waitOrThrow(this.title(), 'Date picker did not open');
   }

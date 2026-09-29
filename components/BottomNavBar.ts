@@ -1,5 +1,7 @@
 import type { Screen } from '@mobilewright/core';
+import { expect } from '@mobilewright/test';
 import { dismissKeyboard } from '../helpers/keyboard';
+import { step } from '../utils/step';
 
 export type NavTab = 'Home' | 'Profile' | 'Menu';
 
@@ -36,6 +38,7 @@ export class BottomNavBar {
    * Automatically dismisses the software keyboard first to ensure the tab is hittable.
    * @param tab - The tab to navigate to ('Home', 'Profile', or 'Menu').
    */
+  @step('Navigate to tab "{0}"')
   async navigateTo(tab: NavTab): Promise<void> {
     await dismissKeyboard(this.screen);
     await this.getTab(tab).tap();
@@ -49,7 +52,8 @@ export class BottomNavBar {
    * Verifies that the specified nav tab is visible in the bottom navigation bar.
    * @param tab - The tab expected to be visible.
    */
+  @step('Verify tab "{0}" is visible')
   async verifyTabVisible(tab: NavTab): Promise<void> {
-    await this.getTab(tab).waitFor({ state: 'visible' });
+    await expect(this.getTab(tab)).toBeVisible();
   }
 }
