@@ -100,7 +100,6 @@ export class HomePage {
    * Delegates to the shared BottomNavBar component.
    * @param tab - The tab to navigate to ('Home', 'Profile', or 'Menu').
    */
-  @step('Navigate to tab "{0}"')
   async navigateTo(tab: NavTab): Promise<void> {
     await this.navBar().navigateTo(tab);
   }
@@ -121,7 +120,6 @@ export class HomePage {
    * Verifies that the specified bottom nav tab is visible.
    * @param tab - The tab expected to be visible in the nav bar.
    */
-  @step('Verify nav tab "{0}" is visible')
   async verifyNavTabVisible(tab: NavTab): Promise<void> {
     await this.navBar().verifyTabVisible(tab);
   }

@@ -142,6 +142,7 @@ export class DatePicker {
   // ============================================================================
 
   /** Opens the year list, scrolls until the year is visible, then taps it. */
+  @step('Select year {0}')
   private async selectYear(targetYear: number, shownYear: number): Promise<void> {
     await this.header().tap();
 
@@ -161,6 +162,7 @@ export class DatePicker {
   }
 
   /** Picking a year keeps the displayed month, so navigate whichever way is needed. */
+  @step('Go to month {0}')
   private async goToMonth(target: MonthView): Promise<void> {
     await this.waitOrThrow(this.prevMonthButton(), 'Calendar did not return after year selection');
 
@@ -177,6 +179,7 @@ export class DatePicker {
     );
   }
 
+  @step('Select day {0}')
   private async selectDay(date: PickerDate): Promise<void> {
     const dayButton = this.dayButton(date);
     await this.waitOrThrow(

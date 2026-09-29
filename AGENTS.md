@@ -85,6 +85,12 @@ general habits/defaults whenever there's a conflict.
 - Imports: Use the `type` keyword for type-only imports
   (e.g., `import type { Screen } from '@mobilewright/core'`).
 - JSDoc: Document parameters with `@param` tags on all public methods.
+- **Reporting / `@step` decorator** (import from `../utils/step`):
+  Annotate a method only if it is `async`, performs UI interaction or an assertion, has a name a human would recognize as a test step, and is neither a pure forwarder to another annotated method nor a mechanical loop/retry helper.
+  - Annotate: public composite actions, public atomic actions, public verify methods, and private helpers that are a distinct named phase (e.g. `selectYear`).
+  - Do NOT annotate: private locator factories, constructors/setup, non-async or value-returning methods, loop/retry helpers (e.g. `scrollYears`), pure forwarders (the owning layer keeps the decorator).
+  - Templates: `{0}`, `{1}` interpolate arguments; quote string arguments (`"{0}"`), not object arguments. Never interpolate sensitive arguments; if one must appear, list its index in `{ mask: [n] }`.
+  - When a method is borderline, leave it undecorated and flag it for review.
 - **Locator Strategy & Waiting Rules:**
 
   ### Locator Priority (Mobile / Flutter)

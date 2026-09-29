@@ -64,6 +64,7 @@ Every POM follows this exact structure. Do not deviate.
 
 ```typescript
 import type { Screen } from '@mobilewright/core';
+import { step } from '../utils/step';
 // Import only the models/types this POM actually needs
 import { type SomeModel } from '../models/SomeModel';
 
@@ -220,6 +221,8 @@ async inputUsername(username: string): Promise<void> {
 > **Rule:** Default to `private` for atomics. Promote to `public` only when a real test
 > scenario proves it needs to be called independently — never expose "just in case".
 
+> `@step` applies to methods matching the annotation rule in `AGENTS.md` section 4. Locator factories, pure forwarders and loop helpers stay undecorated. Never put a password or token in a step template; use `{ mask: [n] }` only if a sensitive argument has to appear.
+
 ### Mobile interaction verbs
 
 | Action | API |
@@ -281,6 +284,7 @@ await test.step('Navigate to Profile', async () => {
 - Live in the `VERIFY METHODS` section, after all action methods.
 
 ```typescript
+@step('Verify on Phase 3 screen')
 async verifyOnPhase3Screen(): Promise<void> {
   await this.getPhase3Label().waitFor({ state: 'visible' });
 }
@@ -387,6 +391,10 @@ Before presenting any POM as complete, check every category in order.
 - [ ] No locator is duplicated from another POM/Component.
 
 ### C. Actions & Encapsulation
+- [ ] Every `async` action/verify method that is a recognizable step is decorated with `@step('...')` (rule: `AGENTS.md` section 4).
+- [ ] No `@step` on locator factories, constructors, non-async or value-returning methods, loop/retry helpers, or pure forwarders.
+- [ ] No action is annotated at two layers (no page method and component method with the same step meaning).
+- [ ] No sensitive argument appears in a step template.
 - [ ] No raw locator is exposed publicly.
 - [ ] All mobile interactions use `.tap()` — no `.click()`.
 - [ ] No generic wrappers created (`tapElement`, `safeInput`, etc.).

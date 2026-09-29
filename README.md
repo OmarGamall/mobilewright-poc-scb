@@ -144,4 +144,5 @@ live device evidence, validates it, and writes fully standards-compliant TypeScr
 - **No `screen.*` calls in spec files** — all interactions go through Page Object methods.
 - **Locators are private factory methods** — never class fields.
 - **Locator priority:** `getByLabel > getByRole > getByText`
+- **Semantic reporting:** Annotate meaningful async action and verify methods with `@step('...')` from `utils/step.ts`. Not locator factories, forwarders or loop helpers. Full rule: `AGENTS.md`, section 4.
 - **Before any code change** — write a plan in `plans/` and get approval first (see `AGENTS.md`).
