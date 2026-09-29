@@ -3,7 +3,7 @@ import { defineConfig, type MobilewrightConfig } from 'mobilewright';
 const config: MobilewrightConfig = {
   platform: 'android',
   bundleId: 'com.example.scb_automation_app', 
-  reporter: 'html',
+  reporter: [['html', { outputFolder: 'mobilewright-report' }]],
   viewTree: 'on-failure',
 
   // 1. Overall test timeout (60 seconds per test)
