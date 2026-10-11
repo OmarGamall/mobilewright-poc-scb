@@ -8,6 +8,10 @@ export const ENV = {
   /** Android device serial — find yours by running: adb devices */
   deviceId: process.env.DEVICE_ID ?? '',
 
-  /** Flutter app bundle identifier */
-  bundleId: process.env.BUNDLE_ID ?? '',
+  /**
+   * Flutter app bundle identifier.
+   * Default is committed per branch (each branch targets its own app);
+   * set BUNDLE_ID in .env or the shell to override.
+   */
+  bundleId: process.env.BUNDLE_ID ?? 'com.example.scb_automation_app',
 } as const;
