@@ -1,8 +1,9 @@
 import { defineConfig, type MobilewrightConfig } from 'mobilewright';
+import { ENV } from './config/env';
 
 const config: MobilewrightConfig = {
   platform: 'android',
-  bundleId: 'com.example.scb_automation_app', 
+  bundleId: ENV.bundleId, 
   reporter: [['html', { outputFolder: 'mobilewright-report' }]],
   viewTree: 'on-failure',
 
