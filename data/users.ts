@@ -4,6 +4,6 @@ export interface User {
 }
 
 export const StandardUser: User = {
-  username: 'omar',
-  password: '123'
+  username: '8820742198',
+  password: 'Kony@1234'
 };
