@@ -1,13 +1,11 @@
 ---
 name: mobilewright-ui-tree-extractor
 description: >-
-  Runs the project's dumpUITree utility (utils/ui-tree-extractor.ts) to capture the live
-  accessibility tree from a connected Android device. This skill governs a full AI-orchestrated
-  extraction pipeline: interviewing the user for preconditions, writing a targeted dump spec,
-  running the capture, validating the outputs (Silver JSON + Gold YAML), and extracting a
-  structured candidate-locator list for the mobilewright-pom-builder skill. Use this skill
-  whenever the user asks to capture, dump, extract, or generate UI tree evidence for a mobile
-  screen — or before building/updating a POM that needs fresh, real locator evidence.
+  Capture locator evidence from the connected Android device with `npm run extract`
+  (.ui-evidence/<slug>-locators.yml plus a screenshot): when a capture is needed or
+  stale, how to get the device into the right screen and state, and how to read the
+  capture and its warnings before writing locators. Use when asked to capture, dump or
+  extract a screen's UI tree, or before adding or changing a locator that has no evidence.
 ---
 
 # mobilewright-ui-tree-extractor (pointer)

@@ -15,18 +15,19 @@ hand-check. This skill covers what lint cannot decide.
 
 ## 0. Before you start
 
-- **Evidence** per AGENTS.md §4. Read `.ui-evidence/<screen>-locators.yml`;
-  `<screen>-tree.json` adds nothing unless an `identifier` or nesting question
-  comes up. No capture, or the screen changed → `mobilewright-ui-tree-extractor`.
+- **Evidence** per AGENTS.md §4: `.ui-evidence/<slug>-locators.yml`. No capture,
+  a stale one, or a warning you can't resolve → `mobilewright-ui-tree-extractor`
+  (it also explains each element field and warning).
 - **Composing from existing locators** needs no new evidence, but if a reused
   locator has no capture behind it, or its method skips a §5 wait, say so in
   the plan.
-- **Using a capture:** the extractor already strips system UI and redacts
-  `EditText` text; don't re-check that. Check: (1) the file's slug is the screen
-  and state you need (state is encoded in the slug, e.g.
-  `home-country-dropdown` = home with the country list open); (2) labels hold
-  no real personal data (the dummy `data/` accounts and `@test.com` addresses
-  are fine). If either fails, ask for a re-capture.
+- **Using a capture:** the extractor already strips system UI, redacts typed
+  text and computes each element's `role`; don't re-check that. Check: (1) the
+  slug is the screen and state you need (state is encoded in the slug, e.g.
+  `home-country-dropdown` = home with the country list open); (2) its
+  `warnings:` are resolved (duplicates, keyboard, overlay…); (3) labels hold no
+  real personal data (the dummy `data/` accounts and `@test.com` addresses are
+  fine). If any fails, ask for a re-capture.
 - **API surface:** `node_modules/@mobilewright/core/dist/{screen,locator,expect}.d.ts`.
   There is no `click`, `goto`, `page`, `waitForResponse` or network interception.
 - **Layout comes from the §2 skeleton**, not from another POM; older POMs

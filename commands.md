@@ -38,28 +38,30 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
 
 - **Extract UI Tree (filtered — for POM building):**
   ```bash
-  # Navigate to the target screen on your device first, then:
-  npm run extract -- <screen-slug>
+  # Unlock the device, open the app on the target screen and state, then:
+  npm run extract -- <screen-slug>          # slug = screen + state
+  npm run extract -- <screen-slug> --raw    # also save the unfiltered dump
 
   # Examples
   npm run extract -- home
   npm run extract -- login
-  npm run extract -- profile-edit
-  npm run extract -- home-with-egypt-selected
+  npm run extract -- home-country-dropdown
   ```
-  *Outputs two evidence files to `.ui-evidence/`:*
+  *Writes to `.ui-evidence/` (local only, never committed):*
   ```
-  ✅ UI Evidence saved for 'home':
-     Silver: .ui-evidence/home-tree.json       ← full filtered tree (debug fallback)
-     Gold:   .ui-evidence/home-locators.yml    ← flat locator summary (AI POM builder input)
-     Token reduction: ~94% (34154 bytes raw → 2035 bytes combined)
+  ✅ UI evidence saved for 'home':
+     .ui-evidence/home-locators.yml   ← evidence for locators (roles, labels, positions, warnings)
+     .ui-evidence/home.png            ← screenshot of the captured state (not redacted)
+  ⚠️  Warnings:
+     - keyboard: a text field is focused, so the soft keyboard may be open …
   ```
+  *Android only for now. The app (`BUNDLE_ID`) must be in the foreground.*
 
 - **Dump UI Tree (raw, unfiltered — rarely needed directly):**
   ```bash
-  npx mobilecli dump ui --device AU3N025B20000393
+  npx mobilecli dump ui --device <DEVICE_ID>
   ```
-  *This dumps the raw unfiltered accessibility tree. Use `npm run extract` instead for POM building.*
+  *The raw accessibility tree, system UI included. `npm run extract -- <slug> --raw` saves the same next to the evidence.*
 
 ---
 
