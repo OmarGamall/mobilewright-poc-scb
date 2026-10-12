@@ -1,109 +1,94 @@
 ---
 name: mobilewright-pom-builder
 description: >-
-  Guides the creation and modification of Mobilewright TypeScript Page Object Model (POM) classes
-  following this project's established patterns, best practices, and coding standards.
-  Use this skill when the user asks to create, scaffold, or build a new page object, or when
-  editing, updating, modifying, or refactoring an existing page object, page class, component
-  object, or POM for a mobile screen or UI component.
+  Judgment rules for creating or changing Mobilewright TypeScript Page Objects
+  (pages/) and Components (components/) for a Flutter/Android app: new screen
+  POM or reusable widget (picker, checkbox, nav bar, bottom sheet), adding or
+  changing a method, locator, locator factory, verify method, or wait.
 ---
 
-# Mobilewright POM Builder — Complete Guide
+# Mobilewright POM Builder
 
----
+Structural rules (private locator factories, no public getters, JSDoc, return
+types, no sleeps, file naming) are enforced by `npm run verify`; run it, don't
+hand-check. This skill covers what lint cannot decide.
 
-## STEP 0 — Identify Task Type (Always Do This First)
+## 0. Before you start
 
-Before writing any plan or code, identify which scenario applies and follow the branch:
+- **Evidence** per AGENTS.md §4; not needed when composing methods from
+  existing locators. Evidence lives in `.ui-evidence/<screen>-locators.yml`
+  (summary) and `<screen>-tree.json` (full tree). None, or the screen changed →
+  `mobilewright-ui-tree-extractor` skill.
+- **Using a capture:** the extractor already strips system UI and redacts
+  `EditText` text; don't re-check that. Only check: (1) the header's screen
+  slug and data state match what the user named; (2) labels contain no real
+  personal data. If either fails, stop and ask for a re-capture.
+- **Mobilewright is not Playwright web.** The API is in
+  `node_modules/@mobilewright/core/dist/{screen,locator,expect}.d.ts`; check a
+  method exists there before using it. There is no `click`, `goto`, `page`,
+  `waitForResponse` or network interception.
+- **Existing POMs predate these rules; where they differ, this skill wins.**
+  Take layout from the §2 skeleton, not from another POM.
+- **Your plan must state:** (a) the evidence (file + label) for each new
+  locator; (b) for each side-effecting action, which §5 case applies.
 
-```
-A) Build new POM from scratch         → locators needed → go to STEP 1
-B) Refactor POM after a UI change     → fresh locators needed → go to STEP 1
-C) Refactor logic/actions/verify only → no locator changes → skip to §2 (write code)
-D) User provided the UI tree in chat  → validate inline → skip to §2 (write code)
-```
+## 1. Page or component?
 
----
-
-## STEP 1 — Evidence Check (Scenarios A & B only)
-
-Before writing any plan or code, check for UI tree evidence:
-
-1. Does `.ui-evidence/<screen>-locators.yml` already exist for this screen?
-   - **Yes** → Read it and validate it (see validation rules below).
-   - **No** → Activate the `mobilewright-ui-tree-extractor` skill **now**, before writing anything.
-
-2. **Validation rules** (for existing files or user-provided trees):
-   - [ ] At least one node with a `label` or `role` is present.
-   - [ ] No `com.android.systemui` nodes exist (system UI was filtered).
-   - [ ] Any user-entered text on `EditText` nodes shows as `[REDACTED]`.
-   - [ ] No obvious PII (email patterns, phone numbers, full names in label values).
-   - If any check fails → stop, report the issue, ask how to proceed. Do not guess.
-
-> **Scenario D — User provides tree in chat or as a file:**
-> Apply the same 4 validation rules above to the provided content. If it passes, use it as
-> your evidence source and proceed to write code. Do not call the extractor unnecessarily.
-
----
-
-## 1. File Location & Naming
-
-| Type | Path | Example |
+| What | Where | Shape |
 |---|---|---|
-| Full-screen POM | `pages/<ScreenName>.ts` | `pages/LoginPage.ts` |
-| Reusable UI component | `components/<Component>.ts` | `components/DatePicker.ts` |
+| A full app screen | `pages/<Name>Page.ts` | plain class, `constructor(private readonly screen: Screen)` |
+| A reusable widget (picker, checkbox, nav bar, sheet) | `components/<Name>.ts` | plain class taking `Screen`, or the host `Locator` it wraps (see `Checkbox`) |
 
-- One POM per screen or logically distinct component — no "god objects" covering multiple screens.
-- Filename must be **PascalCase** and match the class name exactly: `LoginPage.ts` → `LoginPage`.
+- A page uses a component through a **private factory**
+  (`private navBar() { return new BottomNavBar(this.screen); }`), never a field.
+- A widget used by two or more screens is a component. Never copy its locators
+  into a second page.
+- Every POM a spec needs is registered as a fixture in
+  `fixtures/pages.fixture.ts` and listed in the `fixtures/index.ts` inventory.
+  Specs cannot construct POMs.
 
----
+## 2. Class layout
 
-## 2. Class Skeleton
-
-Every POM follows this exact structure. Do not deviate.
+Skeleton (every `<…>` is a placeholder that needs evidence):
 
 ```typescript
 import type { Screen } from '@mobilewright/core';
+import { expect } from '@mobilewright/test';
 import { step } from '../utils/step';
-// Import only the models/types this POM actually needs
-import { type SomeModel } from '../models/SomeModel';
 
 /**
- * @fileoverview Page Object Model for the <Screen Name> screen.
- * <One-line description of what this screen does.>
+ * @fileoverview <What this screen does, one line.>
+ * Evidence: .ui-evidence/<screen>-locators.yml
  */
-export class SomePageName {
-  readonly screen: Screen;
-
-  constructor(screen: Screen) {
-    this.screen = screen;
-  }
+export class <Name>Page {
+  constructor(private readonly screen: Screen) {}
 
   // ============================================================================
   // LOCATORS (private factory methods)
   // ============================================================================
 
-  private getSomeButton() {
-    return this.screen.getByRole('button', { name: 'SOME_BTN_KEY' });
-  }
-
-  private getUsernameInput() {
-    return this.screen
-      .getByLabel('SOME_INPUT_USERNAME')
-      .getByRole('textfield');
+  private get<Element>() {
+    return this.screen.getByLabel('<LABEL_KEY>');
   }
 
   // ============================================================================
   // ACTIONS
   // ============================================================================
 
-  // Tier 1 — Composite actions (full workflow steps — what specs call by default)
-
-  // Tier 2 — Atomic actions (single-step; public only when a focused test needs it)
+  /**
+   * <What the user achieves.>
+   * @param <arg> - <meaning>
+   */
+  @step('<Domain phrase> "{0}"')
+  async <domainVerb>(<arg>: <Type>): Promise<void> { /* §4, §5 */ }
 
   // ============================================================================
   // VERIFY METHODS
   // ============================================================================
+
+  /** Verifies <state>. */
+  @step('Verify <state>')
+  async verify<State>(): Promise<void> { /* §6 */ }
 
   // ============================================================================
   // PRIVATE HELPERS
@@ -111,315 +96,118 @@ export class SomePageName {
 }
 ```
 
-### Key structural rules
+Locators are **factory methods**, never fields: the Flutter tree is rebuilt
+constantly, and a factory resolves fresh on every call.
 
-- `readonly screen: Screen` — always public and readonly.
-- **All locators are `private` factory methods** — never `private readonly` class fields.
-  Mobile UI trees are dynamic; factory methods ensure a fresh locator on every call.
-- Use `// ====` separator comments to divide the class into **Locators**, **Actions**,
-  **Verify Methods**, and **Private Helpers** sections.
-
----
-
-## 3. Locator Strategy
-
-### Priority order (Mobile / Flutter)
-
-`getByLabel  >  getByRole  >  getByText`
-
-Mobilewright does not support `getByPlaceholder` or `getByTestId`. Always use the most
-semantically meaningful locator the UI tree **actually supports** — never invent one.
-
-### Chaining (the mobile pattern)
-
-Flutter widgets are often nested inside labelled container widgets. Scope a child locator
-by chaining from the container's label:
-
-```typescript
-private getUsernameInput() {
-  return this.screen
-    .getByLabel('LOGIN_INPUT_USERNAME')
-    .getByRole('textfield');
-}
-```
-
-### Rules
-
-- Never fabricate a label key, accessible name, or role string not confirmed by UI tree evidence.
-- Never duplicate a locator across files — each locator belongs to exactly one POM/Component.
-- Never expose raw locators publicly. Expose semantic methods instead.
-- No `.first()`, `.nth()`, `.last()` to suppress ambiguity — fix the locator to be specific.
-
-*See §12 Completion Gate, Category B for the full locator checklist.*
-
----
-
-## 4. Dynamic Locators
-
-For repeating UI elements (lists, options, dynamic rows), write a **private helper method**
-that generates the locator on the fly:
-
-```typescript
-/**
- * Returns a dynamic locator for a country option by its visible display name.
- * @param country - The exact visible name of the country as shown in the dropdown.
- */
-private getCountryOption(country: string) {
-  return this.screen.getByRole('button', { name: country });
-}
-```
-
-> If valid values are domain-constrained, define a type in `models/` and import it.
-> Never hardcode a union type like `'Egypt' | 'India'` directly in the POM — that couples
-> the POM to app data and must change whenever a new country is added.
-
----
-
-## 5. Action Methods — Two-Tier Model
-
-Every public method represents a user-meaningful action. Methods are named as verbs.
-
-### Tier 1 — Composite Actions (primary spec interface)
-
-These represent a **complete user workflow step**. Specs call these by default.
-Write them **first** in the ACTIONS section.
-
-```typescript
-/**
- * Performs the complete login flow: fills credentials, unmasks password,
- * verifies inputs, and submits the form.
- * @param username - The username to enter.
- * @param password - The password to enter.
- */
-async login(username: string, password: string): Promise<void> {
-  await this.getUsernameInput().fill(username);
-  await this.getPasswordInput().fill(password);
-  await this.unmaskPassword();
-  await this.verifyUsernameText(username);
-  await this.verifyPasswordText(password);
-  await this.getSubmitButton().tap();
-}
-```
-
-### Tier 2 — Atomic Actions (focused-test building blocks)
-
-These are **single-step interactions**. Make them `public` **only** when a specific
-focused test genuinely needs to call the step in isolation (e.g., testing partial form
-state). Otherwise, keep them `private`.
-
-```typescript
-/**
- * Fills the username field only. Use login() for the full flow.
- * Exposed for focused tests that verify partial form state.
- * @param username - The username to enter.
- */
-async inputUsername(username: string): Promise<void> {
-  await this.getUsernameInput().fill(username);
-}
-```
-
-> **Rule:** Default to `private` for atomics. Promote to `public` only when a real test
-> scenario proves it needs to be called independently — never expose "just in case".
-
-> `@step` applies to methods matching the annotation rule in `AGENTS.md` section 4. Locator factories, pure forwarders and loop helpers stay undecorated. Never put a password or token in a step template; use `{ mask: [n] }` only if a sensitive argument has to appear.
-
-### Mobile interaction verbs
-
-| Action | API |
+| The element is… | Use |
 |---|---|
-| Tap a button | `locator.tap()` |
-| Fill a text field | `locator.fill(value)` |
-| Wait for visibility | `locator.waitFor({ state: 'visible' })` |
+| Exactly one on screen | `private getX()` |
+| One of a fixed set (tab, menu item) | **typed-key factory**: `private getTab(tab: NavTab)`; the union/enum lives in the component or `models/` |
+| Identified by test data (country, list row) | **runtime-data factory**: `private getCountryOption(country: string)` |
+| A control inside a container | **chain** off the container: `this.getRow(x).getByRole('button', …)` |
 
-**Never use `.click()` — always use `.tap()` for all mobile interactions.**
+**Writing a factory or matching a label pattern? Read `references/locator-patterns.md`.**
 
-### Method signatures
+## 3. Locators
 
-- Every public method must have an **explicit return type** (`Promise<void>`, `Promise<string>`).
-- Every `async` operation **must** be `await`ed — no fire-and-forget.
-- JSDoc with `@param` tags on every public method.
+Pick the highest option **the evidence actually shows**; never invent a value
+to stay high.
 
-*See §12 Completion Gate, Category C & F for the full checklist.*
+| # | Locator | Matches (Android) | Use when |
+|---|---|---|---|
+| 1 | `getByTestId(id)` | `resource-id` (Flutter `Semantics(identifier:)`) | `identifier` appears in `<screen>-tree.json`. Stable across locale and copy changes |
+| 2 | `getByLabel(label)` | accessibility label (`content-desc`) | The app sets semantic labels: the `UPPER_SNAKE` keys here (`LOGIN_INPUT_USERNAME`) are deliberate test hooks |
+| 3 | `getByRole(role, { name })` | native type mapped to a role, + label (or text) | No unique label, but role + name is unique. Roles: `button`, `textfield`, `checkbox`, `radio`, `switch`, `tab`, `text`, `image`, `list`, `listitem`, … (full list: `ROLE_TYPE_MAP` in `query-engine.d.ts`) |
+| 4 | `getByText(text)` | visible text, else label | Static visible copy only; breaks on translation and copy edits |
+| — | `getByPlaceholder` | `placeholder` (input hint) | Not captured by the extractor yet, so there is no evidence; don't use |
+| — | `getByType(type)` | raw native class (`android.widget.EditText`) | Platform-specific; last resort, with a comment giving the reason |
 
----
+**Matching precision** (a near-match makes a test pass on the wrong element):
+- **There is no strict mode.** Unlike Playwright, an action on a locator that
+  matches several elements silently uses the *first* match. Confirm in the
+  capture that the label/name is unique on the screen; if it isn't, scope it by
+  chaining from a unique container.
+- `getByLabel` / `getByText` are **exact and case-sensitive** by default.
+  `{ exact: false }` switches to case-insensitive *substring*; avoid it when
+  values can overlap.
+- `getByRole` `name`: a string must equal the label exactly; a `RegExp` is
+  tested. Use a regex only for labels with a known format (multi-line nav tabs,
+  date cells), **anchor it** (`^…`, `…$`), and escape any test data inside it.
+- Scope by container instead of reaching for `.first()`/`.nth()`/`.last()`.
+  Positional access is allowed only when position *is* the behavior, with an
+  `eslint-disable-next-line playwright/no-nth-methods -- <ordering + evidence>`.
 
-## 6. No Network Synchronization
+## 4. Actions
 
-Mobilewright does **not** support HTTP interception. When an action triggers a background
-operation (e.g., form submit calling an API), synchronize by waiting for the resulting
-**UI change** instead:
+- Name public methods as domain verbs: `login()`, `selectCountry()`,
+  `navigateTo(tab)`, not `tapLoginButton()`.
+- Parameters use `models/` types or unions (`NavTab`, `PickerDate`) instead of
+  `string` wherever one exists, so typos fail at compile time.
+- **Composite first:** public composite actions (`login(user, pass)`) are what
+  specs call. Atomic steps (`inputUsername`) stay `private` until a real
+  focused test needs them public; never expose "just in case".
+- No generic wrappers (`tapElement`, `safeFill`).
+- **Keyboard trap:** after typing, the soft keyboard can cover bottom-of-screen
+  targets (nav bar, submit), so the tap lands on the keyboard. The POM or
+  component that owns the tap dismisses it first with `dismissKeyboard` from
+  `helpers/keyboard.ts` (see `BottomNavBar.navigateTo`). Specs never do this.
 
-```typescript
-async submitAndVerifySuccess(): Promise<void> {
-  await this.getSubmitButton().tap();
-  await this.getSuccessBanner().waitFor({ state: 'visible' });
-}
-```
+### `@step` reporting rule (import from `../utils/step`)
 
----
+Annotate a method only if it is `async`, performs UI interaction or an assertion,
+has a name a human would recognize as a test step, and is neither a pure forwarder
+to another annotated method nor a mechanical loop/retry helper.
 
-## 7. Keyboard Handling (The "Hidden Tap" Trap)
+- **Annotate:** public composite actions, public atomic actions, public verify
+  methods, and private helpers that are a distinct named phase (e.g. `selectYear`).
+- **Do NOT annotate:** private locator factories, constructors/setup, non-async or
+  value-returning methods, loop/retry helpers (e.g. `scrollYears`), pure forwarders
+  (the owning layer keeps the decorator).
+- **Templates:** `{0}`, `{1}` interpolate arguments; quote string arguments
+  (`"{0}"`), not object arguments. Never interpolate sensitive arguments (passwords,
+  tokens); if one must appear, list its index in `{ mask: [n] }`.
+- **Borderline?** Leave it undecorated and flag it for review.
 
-In mobile automation, if a valid `.tap()` executes but the app does not respond, it is almost always because the software keyboard was open and intercepted the tap (especially for bottom navigation bars or submit buttons).
+## 5. Synchronization
 
-- **Rule:** If an action requires tapping a UI element near the bottom of the screen (like a Nav Bar or Submit button) and a text input was just interacted with (or is auto-focused), you **MUST** explicitly dismiss the keyboard first.
-- **How:** Do not duplicate keyboard dismissal logic in POMs. Import and use the global `dismissKeyboard` helper from `helpers/keyboard.ts` directly in the spec file, or inside composite action methods.
+Mobilewright actions (`tap`, `fill`) already wait for the element to be
+visible, enabled and stable. Decide for **every** action with a side effect:
 
-```typescript
-// Good - using the global helper
-import { dismissKeyboard } from '../helpers/keyboard';
+1. Does the next step act on an element that appears as a result? → nothing
+   extra; the next action/assertion waits for it.
+2. Does it change screen, or close a picker / sheet / dialog? → before
+   returning, wait for an anchor: the new screen's anchor `toBeVisible()`, or
+   the closed container `waitFor({ state: 'hidden' })`. Otherwise the next tap
+   can land on the closing overlay.
+3. Is the target off-screen in a scrollable list? → `scrollIntoViewIfNeeded()`
+   before acting; a manual `swipe` loop only when that can't reach it.
+4. Does it start an animation with **no** observable end state? → only in a
+   component: a short settle delay with a disable comment giving the reason
+   (see `DatePicker.scrollYears`). Never in a page or spec.
 
-await test.step('Navigate to Profile', async () => {
-  await dismissKeyboard(loggedInScreen);
-  await homePage.navigateTo('Profile');
-});
-```
+Background work (API calls) has no hook here: wait for the UI it produces.
+Never raise timeouts to hide flakiness.
+**Read `references/sync-patterns.md` only for:** scrolling lists, pickers and
+sheets, keyboard handling, or app relaunch/state.
 
----
+## 6. Verify and read methods
 
-## 8. Verification Methods
+- Prefix `verify…`; assert with `expect(locator)` from `@mobilewright/test`
+  (`toBeVisible`, `toHaveText`, `toHaveValue`, `toBeChecked`, `toBeEnabled`,
+  `toBeSelected`, …; full list in `expect.d.ts`). Prefer `expect` over a bare
+  `waitFor`: it reports as an assertion with expected vs received.
+- Add a message (2nd arg) when the failure wouldn't be obvious:
+  `expect(locator, 'terms must stay checked after scrolling')`.
+- **Absence** (`toBeHidden`, `.not.toBeVisible()`) passes instantly before the
+  screen renders. Assert a positive anchor first, then the absence.
+- **Multi-field checks:** one hard anchor first, then `expect.soft` per field so
+  one run reports every mismatch.
+- **Read methods** (`getText`, `getValue`, `isChecked` → return data) snapshot
+  without retrying: wait for a stable state first, then read. They pass data
+  between steps; they are not assertions.
 
-- Prefix with `verify` (e.g., `verifyOnHomeScreen`, `verifyUsernameDisplayed`).
-- Always wait for the UI element that proves the state — don't check a text string alone.
-- Live in the `VERIFY METHODS` section, after all action methods.
+## 7. Scope and done
 
-```typescript
-@step('Verify on Phase 3 screen')
-async verifyOnPhase3Screen(): Promise<void> {
-  await this.getPhase3Label().waitFor({ state: 'visible' });
-}
-```
-
----
-
-## 8. Components vs. Page Objects
-
-| Type | Location | When to use |
-|---|---|---|
-| **Page Object** | `pages/` | One per app screen |
-| **Component** | `components/` | Reusable Flutter widget wrappers (DatePicker, Checkbox, BottomSheet) |
-
-A Component wraps a complex, reusable Flutter widget and exposes a clean API:
-
-```typescript
-async selectDate(date: PickerDate): Promise<void> {
-  await this.getDatePickerButton().tap();
-  await new DatePicker(this.screen).pick(date);
-}
-```
-
----
-
-## 9. Waiting Strategy
-
-| ❌ Banned | ✅ Replacement |
-|---|---|
-| `setTimeout` as a primary wait | `locator.waitFor({ state: 'visible' })` |
-| `screen.waitForTimeout(ms)` | `locator.waitFor({ state: 'visible' })` |
-| Empty `try/catch` around actions | Fix the root cause — don't swallow errors |
-| `waitForResponse` / `waitForURL` | Not available — wait for UI state instead |
-| `.click()` | `.tap()` — always |
-
-`setTimeout` **is only acceptable** inside Component classes as a short settle delay when
-no observable ready-signal exists (e.g., a scroll animation with no completion event).
-It must have a comment explaining why no better signal was available.
-
-*See §12 Completion Gate, Category D for the full checklist.*
-
----
-
-## 10. TypeScript & JSDoc Standards
-
-Follow the global project standards defined in `AGENTS.md`:
-- No `any` anywhere.
-- Explicit return types on all public methods.
-- `import type` for type-only imports.
-- JSDoc `@param` on every public method.
-
----
-
-## 11. Fixture Registration (Optional — Only When Needed)
-
-Register a new POM in a fixture file **only if** a spec file needs to receive it as an
-injected dependency via the test runner. For one-off or utility pages, instantiate directly
-in the test using `new MyPage(screen)`. Over-registering clutters the fixture file.
-
-**When registration is needed:**
-```typescript
-// fixtures/authFixture.ts
-type AuthFixtures = {
-  myNewPage: MyNewPage;
-};
-
-export const test = base.extend<AuthFixtures>({
-  myNewPage: async ({ loggedInScreen }, use) => {
-    await use(new MyNewPage(loggedInScreen));
-  },
-});
-```
-
----
-
-## 12. Agent Boundaries & Scope Control
-
-**Allowed for a POM task:**
-- The target POM/Component file (new or existing).
-- The fixture file, **only if** registration is genuinely needed.
-- Importing required models.
-
-**DO NOT modify without separate approval:**
-- Other POMs or Components not in scope.
-- Existing spec/test files.
-- `mobilewright.config.ts` or `package.json`.
-
----
-
-## 13. Completion Gate — Verify Before Presenting
-
-Before presenting any POM as complete, check every category in order.
-
-### A. Structure & Placement
-- [ ] File is in `pages/` (screen) or `components/` (reusable widget wrapper).
-- [ ] Class name matches filename (PascalCase).
-- [ ] `@fileoverview` JSDoc block is present.
-- [ ] `readonly screen: Screen` is declared public.
-
-### B. Locators — Evidence, Not Invention
-- [ ] Every locator is backed by real UI tree evidence — none were guessed.
-- [ ] Priority order followed: `getByLabel > getByRole > getByText`.
-- [ ] All locators are **private factory methods**, not class fields.
-- [ ] No locator is duplicated from another POM/Component.
-
-### C. Actions & Encapsulation
-- [ ] Every `async` action/verify method that is a recognizable step is decorated with `@step('...')` (rule: `AGENTS.md` section 4).
-- [ ] No `@step` on locator factories, constructors, non-async or value-returning methods, loop/retry helpers, or pure forwarders.
-- [ ] No action is annotated at two layers (no page method and component method with the same step meaning).
-- [ ] No sensitive argument appears in a step template.
-- [ ] No raw locator is exposed publicly.
-- [ ] All mobile interactions use `.tap()` — no `.click()`.
-- [ ] No generic wrappers created (`tapElement`, `safeInput`, etc.).
-- [ ] Composite (Tier 1) methods written before atomic (Tier 2) methods.
-- [ ] Atomic methods are `private` unless a real focused test needs them `public`.
-- [ ] Every `async` operation is `await`ed.
-
-### D. Synchronization
-- [ ] No `waitForResponse`, `waitForURL`, or network patterns.
-- [ ] Explicit waits use `locator.waitFor({ state: 'visible' })`.
-- [ ] Any `setTimeout` has a documented reason why no better signal exists.
-
-### E. Verification Methods
-- [ ] All verification methods are prefixed `verify` and use `waitFor`.
-
-### F. TypeScript & Docs
-- [ ] No `any` anywhere.
-- [ ] Every public method has an explicit return type.
-- [ ] Every public method has JSDoc with `@param` tags.
-- [ ] Type-only imports use the `type` keyword.
-
-### G. Scope & Fixture Registration
-- [ ] Only files within approved scope were touched.
-- [ ] Fixture registration added **only if** a spec genuinely requires injection.
-
-### Final Statement
-End with exactly one line:
-**"Verified against all 7 categories above; N item(s) flagged for your input: [list, or 'none']."**
+Touch only the target POM/component, the components it needs, and its fixture
+registration, unless the plan says otherwise. Done = AGENTS.md §7–8, plus
+every §0 plan item covered.
