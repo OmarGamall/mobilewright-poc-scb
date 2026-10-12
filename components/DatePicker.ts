@@ -3,11 +3,6 @@ import { step } from '../utils/step';
 
 type Locator = ReturnType<Screen['getByRole']>;
 
-/** Extended locator interface to correctly type the text extraction method */
-interface ExtendedLocator extends Locator {
-  getText: () => Promise<string>;
-}
-
 /** Labels are matched in English; change this list if the app runs in another locale. */
 const MONTHS: readonly string[] = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -197,15 +192,13 @@ export class DatePicker {
    */
   private async scrollYears(direction: 'older' | 'newer'): Promise<void> {
     await this.screen.swipe(direction === 'older' ? 'down' : 'up');
-    
-    // Acceptable setTimeout per AGENTS.md rule: Wait for scroll animation to physically stop 
-    // because Flutter provides no layout-stable event hook here.
+
+    // eslint-disable-next-line no-restricted-syntax -- Flutter emits no scroll-end/layout-stable signal; wait for the fling to stop
     await new Promise((resolve) => setTimeout(resolve, SCROLL_SETTLE_MS));
   }
 
   private async readVisibleMonth(): Promise<MonthView> {
-    const extendedHeader = this.header() as unknown as ExtendedLocator;
-    const label: string = await extendedHeader.getText();
+    const label = await this.header().getText();
     return parseHeaderLabel(label);
   }
 
@@ -214,7 +207,7 @@ export class DatePicker {
     try {
       await locator.waitFor({ state: 'visible' });
     } catch (error) {
-      throw new Error(`${failureMessage}\nCaused by: ${(error as Error).message}`);
+      throw new Error(`${failureMessage}\nCaused by: ${(error as Error).message}`, { cause: error });
     }
   }
 }
