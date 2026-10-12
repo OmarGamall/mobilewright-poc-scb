@@ -1,199 +1,277 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ROLE_TYPE_MAP, bareTypeName } from '@mobilewright/core';
 import { ENV } from '../config/env';
+
+/**
+ * @fileoverview UI evidence extractor: captures the current screen of the connected
+ * device and writes `.ui-evidence/<slug>-locators.yml` (+ screenshot, + raw dump on
+ * request) for agents and people writing locators.
+ *
+ * Android only for now: the app-root, system-UI and layout rules below are Android's.
+ * Other platforms are rejected (see `assertSupportedDevice`) until the config refactor
+ * adds per-platform support.
+ */
 
 const OUTPUT_DIR = path.join(process.cwd(), '.ui-evidence');
 
 // ============================================================================
-// Raw JSON types (shape of mobilecli dump ui output)
+// mobilecli output shapes (only the fields observed on a real Android device)
 // ============================================================================
+
+interface Rect { x: number; y: number; width: number; height: number }
 
 interface RawNode {
-  ref: string;
   type: string;
   text?: string;
   label?: string;
   identifier?: string;
   placeholder?: string;
-  rect: { x: number; y: number; width: number; height: number };
+  rect?: Rect;
+  focused?: boolean;
+  checked?: boolean;
+  selected?: boolean;
   children?: RawNode[];
-  focused?: boolean;
-  checked?: boolean;
-  selected?: boolean;
 }
 
-interface RawDump {
-  status: string;
-  data: {
-    elements: RawNode[];
-  };
+export interface DeviceInfo {
+  id: string;
+  name: string;
+  platform: string;
+  type: string;
+  version: string;
+  model?: string;
+  screenSize: { width: number; height: number };
 }
 
+export interface ForegroundApp { packageName: string; version?: string }
+
 // ============================================================================
-// Filtered node type (rect and ref stripped)
+// Evidence node (what the YAML shows)
 // ============================================================================
 
-interface FilteredNode {
+interface EvidenceNode {
+  role: string;
   type: string;
   label?: string;
   text?: string;
   identifier?: string;
   placeholder?: string;
-  focused?: boolean;
-  checked?: boolean;
-  selected?: boolean;
-  children?: FilteredNode[];
+  focused?: true;
+  checked?: true;
+  selected?: true;
+  at?: string;
+  offscreen?: true;
+  zeroSize?: true;
+  children?: EvidenceNode[];
 }
 
 // ============================================================================
-// Constants
+// Android rules
 // ============================================================================
 
-/** Widget types that are pure layout containers with no accessible semantics. */
+const APP_ROOT_ID = 'android:id/content';
+const SYSTEM_UI_PREFIX = 'com.android.systemui';
+
+/** Pure layout containers: dropped (children hoisted) when they carry nothing locatable. */
 const LAYOUT_TYPES = new Set([
   'android.widget.FrameLayout',
   'android.widget.LinearLayout',
+  'android.widget.RelativeLayout',
   'android.view.ViewGroup',
   'android.widget.ScrollView',
   'android.widget.HorizontalScrollView',
 ]);
 
-// ============================================================================
-// Filter helpers
-// ============================================================================
+/** Roles a user interacts with: kept even without a label, and flagged when unreachable. */
+const INTERACTIVE_ROLES = new Set([
+  'button', 'textfield', 'checkbox', 'radio', 'switch', 'slider', 'combobox', 'tab', 'link',
+]);
 
-/** True for a resource-id the app set (getByTestId); excludes Android framework and system UI ids. */
-function isAppIdentifier(id: string | undefined): id is string {
-  return Boolean(id) && !id!.startsWith('android:id/') && !id!.startsWith('com.android.systemui');
-}
-
-/** True if a node carries accessible meaning an agent can use for locators. */
-function hasSemantic(node: RawNode): boolean {
-  return Boolean(
-    node.label ||
-    (node.text && node.text.trim()) ||
-    isAppIdentifier(node.identifier) ||
-    node.placeholder ||
-    node.focused ||
-    node.checked !== undefined ||
-    node.selected !== undefined,
-  );
-}
-
-/**
- * Recursively filters a raw node:
- * - Strips rect and ref
- * - Redacts text on EditText nodes
- * - Drops layout-only wrappers that add no information
- * - Shortens Android type names (e.g. "android.widget.Button" → "Button")
- *
- * Returns null if the node (and all its descendants) carry no locator value.
- *
- * @param node - The raw node to filter.
- */
-function filterNode(node: RawNode): FilteredNode | null {
-  const filteredChildren: FilteredNode[] = [];
-
-  for (const child of node.children ?? []) {
-    const filtered = filterNode(child);
-    if (filtered !== null) filteredChildren.push(filtered);
+/** Mobilewright's own role for a native type (same tables `getByRole` uses), or 'none'. */
+function roleOf(type: string): string {
+  const bare = bareTypeName(type);
+  for (const [role, types] of Object.entries(ROLE_TYPE_MAP)) {
+    if ((types as readonly string[]).includes(bare)) return role;
   }
-
-  const isLayoutOnly = LAYOUT_TYPES.has(node.type) && !hasSemantic(node);
-
-  // Layout wrapper with nothing useful in it or under it → drop entirely
-  if (isLayoutOnly && filteredChildren.length === 0) return null;
-
-  // Redact user-entered text on input fields
-  const rawText = node.text?.trim();
-  const text =
-    node.type === 'android.widget.EditText' && rawText ? '[REDACTED]' : rawText || undefined;
-
-  // Shorten the type name for readability
-  const shortType = node.type
-    .replace('android.widget.', '')
-    .replace('android.view.', '');
-
-  const result: FilteredNode = {
-    type: shortType,
-    ...(node.label !== undefined && { label: node.label }),
-    ...(text !== undefined && { text }),
-    // Keep identifier only for app content (not system UI — already excluded at root level)
-    ...(isAppIdentifier(node.identifier) && { identifier: node.identifier }),
-    ...(node.placeholder && { placeholder: node.placeholder }),
-    ...(node.focused && { focused: true }),
-    ...(node.checked !== undefined && { checked: node.checked }),
-    ...(node.selected !== undefined && { selected: node.selected }),
-    ...(filteredChildren.length > 0 && { children: filteredChildren }),
-  };
-
-  return result;
+  return 'none';
 }
 
-/**
- * Finds the app content root: the element with identifier "android:id/content".
- * This is the boundary between Android system UI and the app's own widget tree.
- *
- * @param elements - Top-level elements from the raw dump.
- */
-function findAppRoot(elements: RawNode[]): RawNode | null {
-  for (const el of elements) {
-    if (el.identifier === 'android:id/content') return el;
-    const found = findAppRoot(el.children ?? []);
-    if (found) return found;
+/** "android.widget.EditText" → "EditText". */
+const shortType = (type: string): string => type.slice(type.lastIndexOf('.') + 1);
+
+const isAppIdentifier = (id: string | undefined): id is string =>
+  Boolean(id) && !id!.startsWith('android:id/') && !id!.startsWith(SYSTEM_UI_PREFIX);
+
+// ============================================================================
+// mobilecli helpers
+// ============================================================================
+
+function runMobilecli(args: string): string {
+  return execSync(`npx mobilecli ${args}`, { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
+function mobilecliData<T>(args: string): T {
+  const out = runMobilecli(args);
+  let parsed: { status?: string; data?: T };
+  try {
+    parsed = JSON.parse(out) as { status?: string; data?: T };
+  } catch {
+    throw new Error(`[ui-tree-extractor] mobilecli ${args} did not return JSON:\n${out.slice(0, 300)}`);
   }
-  return null;
+  if (parsed.status !== 'ok' || parsed.data === undefined) {
+    throw new Error(`[ui-tree-extractor] mobilecli ${args} failed: ${out.slice(0, 300)}`);
+  }
+  return parsed.data;
+}
+
+function assertSupportedDevice(device: DeviceInfo): void {
+  if (device.platform !== 'android') {
+    throw new Error(
+      `[ui-tree-extractor] ${device.platform} is not supported yet; only Android captures are ` +
+      'implemented (text redaction and app-root detection are Android-specific).',
+    );
+  }
 }
 
 // ============================================================================
-// Gold output: flat YAML-style locator summary
+// Filtering
 // ============================================================================
 
-/**
- * Converts filtered nodes to an indented YAML-style string.
- * Layout wrappers with no semantic content are collapsed (children hoisted up),
- * keeping the output flat and agent-readable.
- *
- * @param nodes - Filtered nodes to convert.
- * @param indentLevel - Current indentation depth (2 spaces per level).
- */
-function toYaml(nodes: FilteredNode[], indentLevel = 0): string {
-  const pad = '  '.repeat(indentLevel);
-  const lines: string[] = [];
-
+function findAll(nodes: RawNode[], match: (n: RawNode) => boolean, out: RawNode[] = []): RawNode[] {
   for (const node of nodes) {
-    const isPassthrough =
-      !node.label &&
-      !node.text &&
-      !node.identifier &&
-      !node.placeholder &&
-      !node.focused &&
-      node.checked === undefined &&
-      node.selected === undefined;
+    if (match(node)) out.push(node);
+    findAll(node.children ?? [], match, out);
+  }
+  return out;
+}
 
-    // Collapse layout wrappers: hoist their children up to this level
-    if (isPassthrough && node.children) {
-      lines.push(toYaml(node.children, indentLevel));
-      continue;
-    }
+interface FilterContext {
+  screen: { width: number; height: number };
+  /** Interactive nodes with no label/text/id and no labelled ancestor to chain from. */
+  noHandle: string[];
+}
 
-    lines.push(`${pad}- type: ${node.type}`);
-    if (node.label !== undefined) lines.push(`${pad}  label: ${JSON.stringify(node.label)}`);
-    if (node.text !== undefined)  lines.push(`${pad}  text: ${JSON.stringify(node.text)}`);
-    if (node.identifier !== undefined)  lines.push(`${pad}  identifier: ${JSON.stringify(node.identifier)}`);
-    if (node.placeholder !== undefined) lines.push(`${pad}  placeholder: ${JSON.stringify(node.placeholder)}`);
-    if (node.focused)             lines.push(`${pad}  focused: true`);
-    if (node.checked !== undefined)  lines.push(`${pad}  checked: ${node.checked}`);
-    if (node.selected !== undefined) lines.push(`${pad}  selected: ${node.selected}`);
+const formatRect = (r: Rect): string => `${r.x},${r.y} ${r.width}x${r.height}`;
 
-    if (node.children?.length) {
-      lines.push(`${pad}  children:`);
-      lines.push(toYaml(node.children, indentLevel + 2));
-    }
+/**
+ * Turns a raw node into evidence nodes (0, 1, or its hoisted children):
+ * - layout containers and empty non-interactive nodes disappear, children are hoisted;
+ * - every kept node gets its Mobilewright role, position and visibility flags;
+ * - text in text fields is redacted (by role, so every text-input class is covered).
+ */
+function filterNode(node: RawNode, ctx: FilterContext, labelledAncestor: boolean): EvidenceNode[] {
+  const role = roleOf(node.type);
+  const label = node.label || undefined;
+  const rawText = node.text?.trim() || undefined;
+  const text = rawText && role === 'textfield' ? '[REDACTED]' : rawText;
+  const identifier = isAppIdentifier(node.identifier) ? node.identifier : undefined;
+  const placeholder = node.placeholder || undefined;
+  // Typed text is redacted and changes with input, so it is never a handle for a text field.
+  const hasHandle = Boolean(label || (role !== 'textfield' && rawText) || identifier || placeholder);
+  const hasState = Boolean(node.focused || node.checked || node.selected);
+
+  const children = (node.children ?? []).flatMap((c) => filterNode(c, ctx, labelledAncestor || Boolean(label)));
+
+  const keep = INTERACTIVE_ROLES.has(role) || (!LAYOUT_TYPES.has(node.type) && (hasHandle || hasState));
+  if (!keep) return children;
+
+  if (INTERACTIVE_ROLES.has(role) && !hasHandle && !labelledAncestor) {
+    ctx.noHandle.push(`${shortType(node.type)}${node.rect ? ` at ${formatRect(node.rect)}` : ''}`);
   }
 
-  return lines.filter(Boolean).join('\n');
+  const result: EvidenceNode = { role, type: shortType(node.type) };
+  if (label) result.label = label;
+  if (text) result.text = text;
+  if (identifier) result.identifier = identifier;
+  if (placeholder) result.placeholder = placeholder;
+  if (node.focused) result.focused = true;
+  if (node.checked) result.checked = true;
+  if (node.selected) result.selected = true;
+  if (node.rect) {
+    const r = node.rect;
+    result.at = formatRect(r);
+    if (r.width <= 0 || r.height <= 0) result.zeroSize = true;
+    else if (r.x + r.width <= 0 || r.y + r.height <= 0 || r.x >= ctx.screen.width || r.y >= ctx.screen.height) {
+      result.offscreen = true;
+    }
+  }
+  if (children.length) result.children = children;
+  return [result];
+}
+
+function flatten(nodes: EvidenceNode[], out: EvidenceNode[] = []): EvidenceNode[] {
+  for (const n of nodes) {
+    out.push(n);
+    flatten(n.children ?? [], out);
+  }
+  return out;
+}
+
+/** Locator-relevant warnings an agent must see before writing locators. */
+function collectWarnings(nodes: EvidenceNode[], ctx: FilterContext, windowWarnings: string[]): string[] {
+  const all = flatten(nodes);
+  const warnings = [...windowWarnings];
+
+  // Mobilewright has no strict mode: a locator matching several nodes silently uses the first.
+  const counts = new Map<string, number>();
+  for (const n of all) {
+    for (const key of [n.label && `label "${n.label}"`, n.text && n.text !== '[REDACTED]' && `text "${n.text}"`]) {
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  for (const [key, count] of counts) {
+    if (count > 1) warnings.push(`duplicate ${key} ×${count}: a locator on it acts on the first match; scope by container`);
+  }
+
+  if (all.some((n) => n.role === 'textfield' && n.focused)) {
+    warnings.push(
+      'keyboard: a text field is focused, so the soft keyboard may be open (it never appears in the ' +
+      'dump; a field can stay focused after the keyboard closes): check the screenshot before trusting lower elements',
+    );
+  }
+  for (const item of ctx.noHandle) {
+    warnings.push(`no-handle: interactive ${item} has no label, text or identifier; ask the app team for a Semantics label/identifier`);
+  }
+  const offscreen = all.filter((n) => n.offscreen).length;
+  if (offscreen) warnings.push(`offscreen: ${offscreen} element(s) are outside the screen and need scrolling before a tap`);
+  const zero = all.filter((n) => n.zeroSize).length;
+  if (zero) warnings.push(`zero-size: ${zero} element(s) have no size; Mobilewright treats them as not visible`);
+  if (!all.some((n) => n.identifier)) {
+    warnings.push('no-identifiers: no app element has a test id here, so getByTestId cannot be used on this screen');
+  }
+  return warnings;
+}
+
+// ============================================================================
+// YAML output
+// ============================================================================
+
+const q = (s: string): string => JSON.stringify(s);
+
+function toYaml(nodes: EvidenceNode[], indent: number): string[] {
+  const pad = '  '.repeat(indent);
+  const lines: string[] = [];
+  for (const n of nodes) {
+    lines.push(`${pad}- role: ${n.role}`);
+    lines.push(`${pad}  type: ${n.type}`);
+    if (n.label !== undefined) lines.push(`${pad}  label: ${q(n.label)}`);
+    if (n.text !== undefined) lines.push(`${pad}  text: ${q(n.text)}`);
+    if (n.identifier !== undefined) lines.push(`${pad}  identifier: ${q(n.identifier)}`);
+    if (n.placeholder !== undefined) lines.push(`${pad}  placeholder: ${q(n.placeholder)}`);
+    if (n.focused) lines.push(`${pad}  focused: true`);
+    if (n.checked) lines.push(`${pad}  checked: true`);
+    if (n.selected) lines.push(`${pad}  selected: true`);
+    if (n.at) lines.push(`${pad}  at: ${n.at}`);
+    if (n.offscreen) lines.push(`${pad}  offscreen: true`);
+    if (n.zeroSize) lines.push(`${pad}  zeroSize: true`);
+    if (n.children?.length) {
+      lines.push(`${pad}  children:`);
+      lines.push(...toYaml(n.children, indent + 2));
+    }
+  }
+  return lines;
 }
 
 // ============================================================================
@@ -201,99 +279,140 @@ function toYaml(nodes: FilteredNode[], indentLevel = 0): string {
 // ============================================================================
 
 /**
- * Dumps the current accessibility tree from the connected Android device,
- * filters it to app-only content, and saves two evidence files:
+ * Turns a raw `mobilecli dump ui` output into the evidence YAML. Pure apart from the
+ * capture timestamp, so the filter can be tested against a saved dump without a device.
  *
- *   .ui-evidence/<screenName>-tree.json    (Silver — filtered app JSON, for fallback/debug)
- *   .ui-evidence/<screenName>-locators.yml (Gold  — flat locator summary for the POM builder skill)
- *
- * The app must already be navigated to the target screen before calling this.
- * Text values on EditText nodes are automatically REDACTED.
- *
- * @param screenName - Slug identifying the screen, used as the output filename prefix.
- *                     Examples: 'login', 'home-phase3', 'profile'
+ * @param screenName - Slug naming the screen and its state.
+ * @param rawDump - Untouched stdout of `mobilecli dump ui`.
+ * @param device - `mobilecli device info` data for the capturing device.
+ * @param app - Foreground app, or undefined when mobilecli could not determine it.
+ * @param initialWarnings - Warnings gathered before the dump (e.g. unverified app).
+ * @returns The YAML text and the warnings it contains.
  */
-export function dumpUITree(screenName: string): void {
+export function renderEvidence(
+  screenName: string,
+  rawDump: string,
+  device: DeviceInfo,
+  app: ForegroundApp | undefined,
+  initialWarnings: string[] = [],
+): { yaml: string; warnings: string[] } {
+  let elements: RawNode[];
+  try {
+    const parsed = JSON.parse(rawDump) as { status?: string; data?: { elements?: RawNode[] } };
+    if (parsed.status !== 'ok' || !Array.isArray(parsed.data?.elements)) throw new Error('bad shape');
+    elements = parsed.data.elements;
+  } catch {
+    throw new Error(`[ui-tree-extractor] unexpected mobilecli dump output:\n${rawDump.slice(0, 300)}`);
+  }
+
+  // App window vs. anything else on screen.
+  const windowWarnings = [...initialWarnings];
+  const appRoots = findAll(elements, (n) => n.identifier === APP_ROOT_ID);
+  if (appRoots.length === 0) {
+    throw new Error(`[ui-tree-extractor] no app window (${APP_ROOT_ID}) in the dump. Is the app in the foreground and the device unlocked?`);
+  }
+  if (appRoots.length > 1) {
+    windowWarnings.push(`windows: ${appRoots.length} app content windows (e.g. a dialog); captured the first`);
+  }
+  for (const top of elements) {
+    const isSystemUi = top.identifier?.startsWith(SYSTEM_UI_PREFIX);
+    // Windows holding any app root are covered by the "windows" warning above.
+    const containsAppRoot = findAll([top], (n) => appRoots.includes(n)).length > 0;
+    if (!isSystemUi && !containsAppRoot) {
+      windowWarnings.push(`overlay: another window is on screen (${top.identifier ?? top.type}); the capture may not match what a test sees`);
+    }
+  }
+
+  const ctx: FilterContext = { screen: device.screenSize, noHandle: [] };
+  const nodes = (appRoots[0].children ?? []).flatMap((c) => filterNode(c, ctx, false));
+  if (nodes.length === 0) {
+    throw new Error('[ui-tree-extractor] the app window has no locatable elements (blank or loading screen?)');
+  }
+  const warnings = collectWarnings(nodes, ctx, windowWarnings);
+
+  const header = [
+    `# UI Evidence — ${screenName}`,
+    `# Captured: ${new Date().toISOString()} · app ${app ? `${app.packageName} v${app.version ?? '?'}` : `${ENV.bundleId} (not verified)`} · ` +
+      `device ${device.name}${device.model ? ` (${device.model})` : ''}, ${device.platform} ${device.version}, ${device.type} · ` +
+      `screen ${device.screenSize.width}x${device.screenSize.height}`,
+    '# Redacted: text typed into text fields. NOT redacted: labels, static text, and the screenshot (all may contain names/emails).',
+    '# role: Mobilewright getByRole role ("none" = no role; use getByLabel / getByText). at: x,y widthxheight (px).',
+    '# focused / checked / selected are listed only when true.',
+    '# Locator priority: getByTestId(identifier) > getByLabel > getByRole > getByText.',
+    '',
+  ];
+  const body = [
+    'elements:',
+    ...toYaml(nodes, 1),
+    '',
+    warnings.length ? 'warnings:' : 'warnings: []',
+    ...warnings.map((w) => `  - ${q(w)}`),
+    '',
+  ];
+  return { yaml: [...header, ...body].join('\n'), warnings };
+}
+
+export interface ExtractOptions {
+  /** Also save mobilecli's untouched dump as `<slug>-raw.json` (deep debugging only). */
+  raw?: boolean;
+}
+
+/**
+ * Captures the current screen of the connected Android device into `.ui-evidence/`:
+ *
+ *   <slug>-locators.yml  evidence for writing locators (always; the file agents read)
+ *   <slug>.png           screenshot, to confirm the screen state (always)
+ *   <slug>-raw.json      mobilecli's unfiltered dump (only with `raw: true`)
+ *
+ * The app (ENV.bundleId) must be in the foreground on the target screen and state.
+ *
+ * @param screenName - Slug naming the screen and its state, e.g. 'home', 'home-country-dropdown'.
+ * @param options - Extra outputs; see {@link ExtractOptions}.
+ */
+export function dumpUITree(screenName: string, options: ExtractOptions = {}): void {
   const deviceId = ENV.deviceId;
   if (!deviceId) {
-    throw new Error(
-      '[ui-tree-extractor] DEVICE_ID is not set. ' +
-      'Ensure your .env file exists and contains DEVICE_ID.',
-    );
+    throw new Error('[ui-tree-extractor] DEVICE_ID is not set. Ensure your .env file exists and contains DEVICE_ID.');
   }
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
-
-  // Step 1: Capture raw dump from device
-  console.log(`[ui-tree-extractor] Dumping UI tree for device: ${deviceId}`);
-  const raw = execSync(`npx mobilecli dump ui --device ${deviceId}`, { encoding: 'utf-8' });
-
-  // Step 2: Parse and validate structure
-  let dump: RawDump;
+  // Device and foreground app: refuse captures of the wrong platform or the wrong app.
+  const device = mobilecliData<{ device: DeviceInfo }>(`device info --device ${deviceId}`).device;
+  assertSupportedDevice(device);
+  const windowWarnings: string[] = [];
+  // `apps foreground` is unreliable on some Android devices (it intermittently fails to
+  // determine the app), so an unknown answer is a warning; a different app is an error.
+  let app: ForegroundApp | undefined;
   try {
-    dump = JSON.parse(raw) as RawDump;
+    app = mobilecliData<ForegroundApp>(`apps foreground --device ${deviceId}`);
   } catch {
+    windowWarnings.push(`app: mobilecli could not determine the foreground app; check the screenshot shows ${ENV.bundleId}`);
+  }
+  if (app && app.packageName !== ENV.bundleId) {
     throw new Error(
-      `[ui-tree-extractor] mobilecli output was not valid JSON:\n${raw.slice(0, 500)}`,
+      `[ui-tree-extractor] foreground app is ${app.packageName}, expected ${ENV.bundleId}. ` +
+      'Open the app on the target screen (and unlock the device), then retry.',
     );
   }
 
-  if (dump.status !== 'ok' || !Array.isArray(dump.data?.elements)) {
-    throw new Error(
-      `[ui-tree-extractor] Unexpected dump structure: ${JSON.stringify(dump).slice(0, 200)}`,
-    );
-  }
-
-  // Step 3: Find android:id/content — the app/system UI boundary
-  const appRoot = findAppRoot(dump.data.elements);
-  if (!appRoot) {
-    throw new Error(
-      '[ui-tree-extractor] Could not find android:id/content root. ' +
-      'Is the app in the foreground?',
-    );
-  }
-
-  // Step 4: Filter the app subtree
-  const filtered = filterNode(appRoot);
-  if (!filtered) {
-    throw new Error(
-      '[ui-tree-extractor] App root filtered to nothing — ' +
-      'the screen may have no accessible elements.',
-    );
-  }
-
-  // Step 5: Save Silver output — filtered JSON (fallback/debug)
-  const jsonPath = path.join(OUTPUT_DIR, `${screenName}-tree.json`);
-  fs.writeFileSync(jsonPath, JSON.stringify(filtered, null, 2), 'utf-8');
-
-  // Step 6: Save Gold output — flat YAML locator summary (POM builder input)
-  const appNodes = filtered.children ?? [filtered];
-  const yamlHeader = [
-    `# UI Evidence — ${screenName}`,
-    `# Generated: ${new Date().toISOString()}`,
-    `# Text values on EditText nodes are REDACTED.`,
-    `# Use the identifiers, labels and roles below to build Mobilewright locators.`,
-    `# Locator priority: getByTestId(identifier) > getByLabel > getByRole > getByText`,
-    `# placeholder → getByPlaceholder (input hint text).`,
-    ``,
-    `elements:`,
-    ``,
-  ].join('\n');
+  console.log(`[ui-tree-extractor] Capturing '${screenName}' on ${device.name} (${deviceId})`);
+  const rawDump = runMobilecli(`dump ui --device ${deviceId}`);
+  const { yaml, warnings } = renderEvidence(screenName, rawDump, device, app, windowWarnings);
 
   const ymlPath = path.join(OUTPUT_DIR, `${screenName}-locators.yml`);
-  fs.writeFileSync(ymlPath, yamlHeader + toYaml(appNodes, 1), 'utf-8');
+  fs.writeFileSync(ymlPath, yaml, 'utf-8');
 
-  // Report sizes and token reduction
-  const rawSize = Buffer.byteLength(raw, 'utf-8');
-  const filteredSize = fs.statSync(jsonPath).size + fs.statSync(ymlPath).size;
-  const reduction = Math.round((1 - filteredSize / rawSize) * 100);
+  const pngPath = path.join(OUTPUT_DIR, `${screenName}.png`);
+  runMobilecli(`screenshot --device ${deviceId} -o "${pngPath}"`);
 
-  console.log(
-    `\n✅ UI Evidence saved for '${screenName}':` +
-    `\n   Silver: ${jsonPath}` +
-    `\n   Gold:   ${ymlPath}` +
-    `\n   Token reduction: ~${reduction}% (${rawSize} bytes raw → ${filteredSize} bytes combined)\n`,
-  );
+  const written = [ymlPath, pngPath];
+  if (options.raw) {
+    const rawPath = path.join(OUTPUT_DIR, `${screenName}-raw.json`);
+    fs.writeFileSync(rawPath, rawDump, 'utf-8');
+    written.push(rawPath);
+  }
+
+  console.log(`\n✅ UI evidence saved for '${screenName}':\n${written.map((p) => `   ${p}`).join('\n')}`);
+  if (warnings.length) console.log(`\n⚠️  Warnings:\n${warnings.map((w) => `   - ${w}`).join('\n')}`);
+  console.log('');
 }
