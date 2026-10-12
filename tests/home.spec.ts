@@ -1,5 +1,4 @@
-import { test } from '../fixtures/pagesFixture';
-import { dismissKeyboard } from '../helpers/keyboard';
+import { test } from '@fixtures';
 
 test.describe('Home Page Features', () => {
   

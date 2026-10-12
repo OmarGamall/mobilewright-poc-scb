@@ -1,14 +1,12 @@
-import { test } from '@mobilewright/test';
-import { LoginPage } from '../pages/LoginPage';
-import { HomePage } from '../pages/HomePage';
-import { StandardUser } from '../data/users';
+import { test } from '@fixtures';
+import { StandardUser } from '@data/users';
 
-test('launch app and perform login', async ({ screen }) => {
-  const loginPage = new LoginPage(screen);
-  const homePage = new HomePage(screen);
+// This spec exercises the login flow itself, so skip the automatic login precondition.
+test.use({ loggedIn: false });
 
+test('launch app and perform login', async ({ loginPage, homePage }) => {
   await loginPage.login(StandardUser.username, StandardUser.password);
-  
+
   // Verify transition to Home page (Phase 3 screen)
   await homePage.verifyOnPhase3Screen();
 });
