@@ -16,8 +16,8 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
   # Run a specific test file
   npx mobilewright test tests/home.spec.ts
   
-  # Run a specific test case (by title match)
-  npx mobilewright test -g "test title name"
+  # Run tests whose title matches a regex (there is no -g short flag)
+  npx mobilewright test --grep "test title name"
   ```
 
 - **Open the Mobilewright Inspector:**
