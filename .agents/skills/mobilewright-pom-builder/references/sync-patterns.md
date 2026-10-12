@@ -51,7 +51,7 @@ async pick(date: PickerDate): Promise<void> {
 ```
 
 Real version: `DatePicker.pick`. The hidden wait is backed by evidence that the
-title is absent once the sheet closes (`dummy-screen-locators.yml` has no
+title is absent once the sheet closes (`home-locators.yml` has no
 `Select Date`); confirm the equivalent for any new sheet.
 
 ## Scrolling
