@@ -4,19 +4,25 @@ Always-loaded rules; keep them terse. Whatever `npm run verify` checks (types,
 ESLint, conventions script — see `docs/static-analysis.md`) is not restated here;
 the rules below are behavioral. Detailed procedures live in `.agents/skills/`
 (see §6). If a skill conflicts with this file, this file wins: flag the conflict.
+Skills govern the code you write; existing code you only pass by is flagged, not
+upgraded to the skill's rules.
 
 ## 1. Classify every change first
 
 | Tier | What | Before editing |
 |---|---|---|
 | T0 | Read-only: explain, review, investigate, run `verify` or tests. Fixes a review finds are a new T1/T2 change | Nothing |
-| T1 | One existing file, <=30 changed lines (added + removed), no new/deleted files, no new or changed locator | State the file + change in one sentence; wait for "yes" |
-| T2 | New files, 2+ files, or any change to POM/component public signatures, locators, waits, fixtures, or models | Written plan (§2); one approval covers every file listed |
-| T3 | Protected: `mobilewright.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `scripts/check-conventions.mjs`, `package.json` / lockfile, `.env*`, CI workflows, deleting or renaming a file | Written plan + explicit approval of that item by name |
+| T1 | One existing file, <=30 changed lines (added + removed), and none of the T2 triggers | State the file + change in one sentence; wait for "yes" |
+| T2 | New files, 2+ files, or adding/changing/renaming a public POM/component method, a locator, a wait (including timeouts and delay constants), a fixture, or a model | Written plan (§2); one approval covers every file listed |
+| T3 | Protected: `mobilewright.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `scripts/check-conventions.mjs`, `package.json` / lockfile, `.env*`, CI workflows, deleting or renaming a **file** | Written plan + explicit approval of that item by name |
 
 If a change matches more than one row, or you're unsure, take the higher tier.
 An explicit user instruction ("no plan, just do it") replaces the "Before
-editing" step for that change only. It never overrides §3.
+editing" step for that change only.
+
+**A request that breaks a rule** (e.g. "add a retry", "raise the timeout"): name
+the rule, explain the risk, offer the proper fix, and proceed with the request
+only if the user confirms knowing the trade-off. §3 can never be overridden.
 
 ## 2. Plans
 
@@ -40,7 +46,11 @@ Always ask first, even if a plan covers it:
   (`devices`, `logcat`, UI dumps) is fine.
 
 Never print, commit, or copy into evidence/reports the contents of `.env` or real
-credentials. Tool permission settings may also enforce this; never bypass them.
+credentials. `data/` holds dummy test accounts only: Mobilewright's own
+`locator.fill(...)` report step prints the typed text, including passwords.
+Tool permission settings may also enforce this; never bypass them.
+Running `npm run extract` is allowed once the user has put the device on the
+target screen (it only reads the screen and writes `.ui-evidence/`).
 
 ## 4. Evidence, not invention
 
@@ -48,7 +58,12 @@ credentials. Tool permission settings may also enforce this; never bypass them.
   data. Evidence = a `.ui-evidence/<screen>-locators.yml` capture, existing code,
   or the user's own statement.
 - New or changed locator with no evidence → `mobilewright-ui-tree-extractor`
-  skill. Unknown app behavior (what a screen shows after an action) → ask.
+  skill. Unknown app behavior (what a screen shows after an action, which data
+  it displays) → ask.
+- A capture can be stale. If it contradicts code that a passing test exercises,
+  trust the code, flag the capture, and ask for a re-capture.
+- Expected values in assertions come from test data or the user, never from
+  whatever a capture happened to show.
 - Mobilewright is not Playwright web: before using an API method, confirm it
   exists in `node_modules/@mobilewright/core/dist/*.d.ts`.
 - Keep facts and assumptions separate. When blocked or ambiguous, stop and ask.
@@ -70,16 +85,18 @@ Read only the rows that apply, once per task, before writing code:
 
 | Task | Read first |
 |---|---|
-| Create a POM/component, or add/change a method or locator (skip for trivial edits) | `.agents/skills/mobilewright-pom-builder/SKILL.md` |
+| Create a POM/component/model, or add/change a method or locator (skip for T1) | `.agents/skills/mobilewright-pom-builder/SKILL.md` |
+| Write or change a spec, or add a fixture | `fixtures/index.ts` (fixture inventory; start state is logged in, opt out with `test.use({ loggedIn: false })`) and `docs/static-analysis.md` §2.4 |
 | Need locator evidence | `.agents/skills/mobilewright-ui-tree-extractor/SKILL.md` |
 | Code review | `.agents/skills/mobilewright-script-reviewer/SKILL.md` |
 | Bug report for a failing test | `.agents/skills/mobilewright-bug-reporter/SKILL.md` |
 | `verify` fails and the message isn't self-explanatory, or adding a check | The matching section of `docs/static-analysis.md` |
 
-Read in full: the skill files above, `.ui-evidence/*-locators.yml`, and any file
-you are about to edit. For `.ui-evidence/*-tree.json`, `test-results/` and
-`mobilewright-report/`, search or read line ranges; never load them whole. Don't
-re-read an unchanged file already in context.
+Read in full: the skill files above, the `.ui-evidence/<screen>-locators.yml`
+for the screens you touch, and any file you are about to edit. Everything else
+in `.ui-evidence/`, plus `test-results/` and `mobilewright-report/`: search or
+read line ranges; never load them whole. Don't re-read an unchanged file
+already in context.
 
 ## 7. Done means
 
@@ -90,6 +107,8 @@ re-read an unchanged file already in context.
   `adb devices`; if none is connected, name the specs and report them as
   **not run**. Never claim an unrun test passed.
 - Never raise timeouts, add retries, or disable parallelism to hide flakiness.
+- Never remove or weaken an assertion while refactoring a spec unless the plan
+  says so; a refactored test still checks what it checked before.
 - Out-of-scope problems are flagged, not fixed.
 - Commit messages (when asked): `<type>(scope): summary`, one logical change per commit.
 
