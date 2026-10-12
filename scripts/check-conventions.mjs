@@ -52,7 +52,7 @@ const repoFiles = execSync('git ls-files --cached --others --exclude-standard', 
 // 4. no new top-level folder without an approved change (AGENTS.md folder layout). Extend this list in the same change.
 const TOP_LEVEL_DIRS = new Set([
   '.agents', '.ui-evidence', 'bug-reports', 'components', 'config', 'data', 'docs', 'fixtures',
-  'helpers', 'models', 'pages', 'plans', 'scripts', 'tests', 'utils',
+  'helpers', 'models', 'pages', 'scripts', 'tests', 'utils',
 ]);
 for (const dir of new Set(repoFiles.filter((f) => f.includes('/')).map((f) => f.split('/')[0]))) {
   if (!TOP_LEVEL_DIRS.has(dir)) errors.push(`${dir}/: top-level folder not in the allowlist in scripts/check-conventions.mjs`);

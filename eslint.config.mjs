@@ -120,7 +120,7 @@ export default tseslint.config(
   {
     ignores: [
       'node_modules', 'mobilewright-report', 'playwright-report', 'blob-report', 'test-results',
-      '.ui-evidence', 'bug-reports', 'plans', 'dist', 'build',
+      '.ui-evidence', 'bug-reports', 'dist', 'build',
     ],
   },
 

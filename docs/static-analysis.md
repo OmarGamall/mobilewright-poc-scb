@@ -86,7 +86,7 @@ Type-checks every `**/*.ts` file. Nothing is emitted.
 
 Config: [`eslint.config.mjs`](../eslint.config.mjs). Rules are layered by folder;
 later layers add to earlier ones. Generated folders (`node_modules`,
-`mobilewright-report`, `test-results`, `.ui-evidence`, `bug-reports`, `plans`) are ignored.
+`mobilewright-report`, `test-results`, `.ui-evidence`, `bug-reports`) are ignored.
 
 ### 2.1 All TypeScript files
 

@@ -1,159 +1,99 @@
-# Agent Rules — Mobilewright TypeScript Automation Framework
+# Agent Rules — Mobilewright TypeScript Framework
 
-These rules apply to every agent working in this repository. They override
-general habits/defaults whenever there's a conflict.
+Always-loaded rules; keep them terse. Whatever `npm run verify` checks (types,
+ESLint, conventions script — see `docs/static-analysis.md`) is not restated here;
+the rules below are behavioral. Detailed procedures live in `.agents/skills/`
+(see §6). If a skill conflicts with this file, this file wins: flag the conflict.
 
-## 1. Permission & Autonomy
+## 1. Classify every change first
 
-- **Never modify, create, or delete any file without explicit confirmation
-  first.** This includes test files, page objects, components, fixtures,
-  config files, `package.json`, and CI workflow files. No exceptions,
-  including "trivial" fixes like typos or formatting.
-- Before making any change, state exactly which file(s) you intend to touch
-  and what the change will do, then wait for an explicit "yes"/"go ahead"
-  before writing anything.
-- Never run destructive or state-changing shell commands
-  (`git push`, `git reset --hard`, `rm`, package installs/removals,
-  `npm publish`) without asking first, even if a plan already covered it.
-- If a task turns out to require touching a file outside what was already
-  approved, stop and ask again before proceeding — approval is scoped to
-  what was described, not open-ended.
+| Tier | What | Before editing |
+|---|---|---|
+| T0 | Read-only: explain, review, investigate, run `verify` or tests. Fixes a review finds are a new T1/T2 change | Nothing |
+| T1 | One existing file, <=30 changed lines (added + removed), no new/deleted files, no new or changed locator | State the file + change in one sentence; wait for "yes" |
+| T2 | New files, 2+ files, or any change to POM/component public signatures, locators, waits, fixtures, or models | Written plan (§2); one approval covers every file listed |
+| T3 | Protected: `mobilewright.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `scripts/check-conventions.mjs`, `package.json` / lockfile, `.env*`, CI workflows, deleting or renaming a file | Written plan + explicit approval of that item by name |
 
-## 2. Planning Requirement
+If a change matches more than one row, or you're unsure, take the higher tier.
+An explicit user instruction ("no plan, just do it") replaces the "Before
+editing" step for that change only. It never overrides §3.
 
-- Before writing any code, produce a **written implementation plan as a
-  file on disk** (not just a chat message) at `plans/<short-task-name>.md`.
-- The plan must include:
-  - Goal / what this change accomplishes
-  - Exact list of files to be created or modified
-  - For each file: what changes, in what order
-  - **The actual code to be written or changed, in full** — not a
-    description of it. For a new file, the complete file content. For an
-    edit to an existing file, the exact before/after snippet (diff-style:
-    what's removed, what's added). A plan that only narrates the change in
-    prose ("will add a login method") is incomplete — the code itself must
-    be in the plan file, ready to be copied into the real file as-is once
-    approved.
-  - Any new dependencies being introduced
-  - How the change will be verified (which tests, manual check, etc.)
-- Wait for explicit approval of the plan file before implementing anything
-  in it.
-- Implementation must match the approved code in the plan exactly. If
-  something needs to change during implementation (an error, a missed
-  edge case), stop, update the plan file with the revised code, and get
-  it re-approved before continuing — never silently write code that
-  differs from what was approved in the plan.
+## 2. Plans
 
-## 3. Architecture — Strict Page Object Model
+- For T2/T3, present the plan in chat (or your tool's plan mode). It is a
+  contract, not a draft of the code:
+  files in implementation order · public signatures · locators with evidence
+  (file + label) · wait strategy per side-effecting action · dependencies ·
+  verification (which specs; device needed) · out of scope. No method bodies.
+- Wait for approval, then implement in plan order. The diff is the review artifact.
+- If implementation needs a file, signature, locator, or dependency not in the
+  plan: stop, amend the plan, get the delta approved.
+- Writing into `bug-reports/` or `.ui-evidence/` needs no confirmation.
 
-- Fixed folder structure. Do not introduce new top-level folders or deviate
-  from this layout without it being called out and approved as part of a plan:
-  ```
-  /tests          → *.spec.ts test files only — no direct screen.* calls
-  /pages          → one Page Object class per screen/major component
-  /components     → reusable Flutter/mobile UI component wrappers (DatePicker, Checkbox, etc.)
-  /fixtures       → custom Mobilewright fixtures, test data factories
-  /utils          → framework-level helpers (ui-tree-extractor, etc.)
-  /config         → environment config (env.ts — device ID, bundle ID)
-  /models         → TypeScript interfaces and type definitions
-  /helpers        → reusable cross-screen helper functions
-  /data           → static test data (users, constants)
-  /plans          → implementation plan files
-  /bug-reports    → generated bug reports
-  ```
-- **No `screen.` calls of any kind directly inside spec files.** All
-  interaction with the screen happens through Page Object or Component methods.
-- Page Objects expose **semantic action/assertion methods**, not raw
-  locators (`login(user, pass)`, not `get usernameInput()` used inline in a test).
-- One Page Object per screen or logically distinct component. No
-  "god object" page classes covering multiple screens.
-- Locators live only inside their owning Page Object or Component class —
-  never duplicated across files, never redefined inline in a test.
-- **Use Dynamic Locator methods for repeating UI patterns:** When interacting
-  with lists or dynamic data, write private helper methods that return a
-  locator generated on-the-fly (e.g., `this.screen.getByRole('button', { name: item.label })`).
-- Every new Page Object and every new spec file follows the same
-  constructor/method-naming pattern as existing ones — check an existing
-  file before creating a new one, don't invent a new convention.
+## 3. Safety
 
-## 4. Coding Standards
+Always ask first, even if a plan covers it:
+- `git push`, `git reset --hard`, rebase, branch deletion; `git commit` unless asked.
+- `rm`; installing, removing or upgrading packages (including global); `npm publish`.
+- Device-state commands: `adb install` / `uninstall`, `pm clear`, `reboot`, or
+  anything that wipes app data or changes device settings. Read-only `adb`
+  (`devices`, `logcat`, UI dumps) is fine.
 
-- TypeScript: no `any`. Explicit types on exported functions/classes and on
-  fixture/data shapes.
-- Return Types: Every public method must have an explicit return type
-  (e.g., `Promise<void>`, `Promise<string>`).
-- Imports: Use the `type` keyword for type-only imports
-  (e.g., `import type { Screen } from '@mobilewright/core'`).
-- JSDoc: Document parameters with `@param` tags on all public methods.
-- **Reporting / `@step` decorator** (import from `../utils/step`):
-  Annotate a method only if it is `async`, performs UI interaction or an assertion, has a name a human would recognize as a test step, and is neither a pure forwarder to another annotated method nor a mechanical loop/retry helper.
-  - Annotate: public composite actions, public atomic actions, public verify methods, and private helpers that are a distinct named phase (e.g. `selectYear`).
-  - Do NOT annotate: private locator factories, constructors/setup, non-async or value-returning methods, loop/retry helpers (e.g. `scrollYears`), pure forwarders (the owning layer keeps the decorator).
-  - Templates: `{0}`, `{1}` interpolate arguments; quote string arguments (`"{0}"`), not object arguments. Never interpolate sensitive arguments; if one must appear, list its index in `{ mask: [n] }`.
-  - When a method is borderline, leave it undecorated and flag it for review.
-- **Locator Strategy & Waiting Rules:**
+Never print, commit, or copy into evidence/reports the contents of `.env` or real
+credentials. Tool permission settings may also enforce this; never bypass them.
 
-  ### Locator Priority (Mobile / Flutter)
-  Mobile locator priority differs from web — there is no `getByPlaceholder`
-  or `getByTestId` in Mobilewright. Use this order:
+## 4. Evidence, not invention
 
-  `getByLabel  >  getByRole  >  getByText`
+- Never invent accessible labels, roles, UI structure, app behavior, or test
+  data. Evidence = a `.ui-evidence/<screen>-locators.yml` capture, existing code,
+  or the user's own statement.
+- New or changed locator with no evidence → `mobilewright-ui-tree-extractor`
+  skill. Unknown app behavior (what a screen shows after an action) → ask.
+- Mobilewright is not Playwright web: before using an API method, confirm it
+  exists in `node_modules/@mobilewright/core/dist/*.d.ts`.
+- Keep facts and assumptions separate. When blocked or ambiguous, stop and ask.
 
-  - Locators are **chained** to scope by container:
-    `this.screen.getByLabel('LOGIN_INPUT_USERNAME').getByRole('textfield')`
-  - **Never fabricate** accessible names, label keys, or role strings without
-    evidence from a UI tree dump. Use the `mobilewright-ui-tree-extractor`
-    skill to capture live evidence before writing any new locator.
-  - Locators in this project are **private factory methods** (not `private readonly`
-    class fields), because mobile UI trees are dynamic. Example:
-    ```typescript
-    private getUsernameInput() {
-      return this.screen
-        .getByLabel('LOGIN_INPUT_USERNAME')
-        .getByRole('textfield');
-    }
-    ```
+## 5. Architecture
 
-  ### Waiting Rules
-  - Use `locator.waitFor({ state: 'visible' })` for explicit waits.
-  - `setTimeout` / `new Promise(resolve => setTimeout(...))` is **only**
-    acceptable inside Component classes as a settle delay when the mobile UI
-    has no observable ready-signal — must be documented with a comment
-    explaining why no better signal exists.
-  - No `waitForResponse` / `waitForURL` — Mobilewright has no HTTP interception.
-  - Never swallow errors with empty/broad `try/catch` around actions.
+- Layout: `tests/ pages/ components/ fixtures/ utils/ config/ models/ helpers/
+  data/ scripts/ docs/`, plus generated `.ui-evidence/ bug-reports/`.
+  No new top-level folder without a plan.
+- Specs use fixtures from `@fixtures` and call POM methods only. One Page Object
+  per screen in `pages/`; reusable widgets in `components/`. A locator lives only
+  in its owner.
+- Tests are independent (no order or shared mutable state); data that can
+  collide is generated per run.
 
-- All async operations must be awaited — no fire-and-forget promises.
+## 6. Read before you act
 
-## 5. Testing Rules
+Read only the rows that apply, once per task, before writing code:
 
-- Every test has at least one meaningful `waitFor` or assertion. Actions with
-  no assertion are not acceptable as tests.
-- Tests must be independent: no reliance on execution order, no shared
-  mutable state between tests without explicit setup/teardown.
-- Test data must be unique per run (generated, not hardcoded) where
-  collisions are possible.
-- `test.only` and `test.skip` must never be left in code that's proposed
-  as "done" — flag them explicitly if used temporarily.
+| Task | Read first |
+|---|---|
+| Create a POM/component, or add/change a method or locator (skip for trivial edits) | `.agents/skills/mobilewright-pom-builder/SKILL.md` |
+| Need locator evidence | `.agents/skills/mobilewright-ui-tree-extractor/SKILL.md` |
+| Code review | `.agents/skills/mobilewright-script-reviewer/SKILL.md` |
+| Bug report for a failing test | `.agents/skills/mobilewright-bug-reporter/SKILL.md` |
+| `verify` fails and the message isn't self-explanatory, or adding a check | The matching section of `docs/static-analysis.md` |
 
-## 6. Git & Change Hygiene
+Read in full: the skill files above, `.ui-evidence/*-locators.yml`, and any file
+you are about to edit. For `.ui-evidence/*-tree.json`, `test-results/` and
+`mobilewright-report/`, search or read line ranges; never load them whole. Don't
+re-read an unchanged file already in context.
 
-- One logical change per commit/PR. Do not bundle unrelated fixes into an
-  approved task.
-- Do not touch files outside the scope of the approved plan, even ones
-  that "look wrong" — flag them separately instead.
-- Commit messages: `<type>(scope): summary`
-  (e.g. `feat(login-page): add login POM and happy-path test`).
-- Do not rewrite or restructure existing passing tests as a side effect of
-  an unrelated task without calling it out first.
+## 7. Done means
 
-## 7. Communication & Assumptions
+- `npm run verify` passes. Fix failures and rerun, showing only failing output.
+  Same failure after two attempts → stop and report.
+- Run only the specs that cover the change: those named in the plan (T2/T3), or
+  the specs using the touched file (T1). Specs need a device: check
+  `adb devices`; if none is connected, name the specs and report them as
+  **not run**. Never claim an unrun test passed.
+- Never raise timeouts, add retries, or disable parallelism to hide flakiness.
+- Out-of-scope problems are flagged, not fixed.
+- Commit messages (when asked): `<type>(scope): summary`, one logical change per commit.
 
-- **No Hallucinations:** Never fabricate accessible names, label keys, role
-  strings, or UI tree structures without evidence. Distinguish between facts
-  (what you can prove via existing code, UI tree dumps, or explicit user
-  confirmation) and assumptions (what you infer).
-- When blocked or uncertain (ambiguous requirement, missing UI evidence,
-  unclear expected behavior), stop and ask — do not guess and proceed.
-- Summarize what was actually done vs. what was planned at the end of each
-  task, calling out any deviations.
+## 8. Final report (≤6 lines)
+
+Files changed · skills read · verify result · specs run + result (or "not run:
+no device") · deviations from plan · items flagged.
