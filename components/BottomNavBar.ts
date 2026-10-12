@@ -22,11 +22,12 @@ export class BottomNavBar {
 
   /**
    * Returns a dynamic locator for a nav tab by its display name.
-   * Uses a regex prefix because tab labels contain a newline + "Tab N of 3" suffix.
+   * Labels are "<Name>\nTab N of 3", so anchor on the name plus the newline:
+   * a bare `^Home` would also match a future "Home settings" tab.
    * @param tab - The tab name to locate.
    */
   private getTab(tab: NavTab) {
-    return this.screen.getByRole('button', { name: new RegExp(`^${tab}`) });
+    return this.screen.getByRole('button', { name: new RegExp(`^${tab}\\n`) });
   }
 
   // ============================================================================

@@ -40,8 +40,7 @@ private getTab(tab: NavTab) {
 
 A regex built from a **typed union** is safe: every value is known and has no
 special characters. Anchor on the delimiter (`\n`), not just `^${tab}`, or a
-future `"Home settings"` tab would also match. (Corrected: `BottomNavBar.getTab`
-currently uses `^${tab}` without the delimiter.)
+future `"Home settings"` tab would also match. (Source: `BottomNavBar.getTab`.)
 
 ## 3. Runtime-data factory (identity comes from test data)
 
