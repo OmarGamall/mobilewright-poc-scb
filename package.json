@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "verify": "tsc --noEmit && eslint . && node scripts/check-conventions.mjs",
+    "test": "mobilewright test",
     "extract": "npx tsx scripts/extract-ui.ts"
   },
   "keywords": [],
@@ -12,11 +13,17 @@
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
+    "@eslint/js": "10.0.1",
     "@mobilewright/test": "^0.0.61",
     "@playwright/test": "1.63.0",
     "@types/node": "^26.6.3",
     "dotenv": "^18.0.4",
+    "eslint": "10.11.0",
+    "eslint-plugin-jsdoc": "63.3.3",
+    "eslint-plugin-playwright": "2.12.0",
     "mobilewright": "^0.0.61",
-    "typescript": "^7.0.2"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0"
   }
 }
