@@ -179,6 +179,16 @@ folder structure that ESLint can't see. It lists every violation, then exits `1`
 | 3 | Every `fixtures/*.fixture.ts` is registered in `fixtures/index.ts` | `fixtures/settings.fixture.ts: not registered in fixtures/index.ts` |
 | 4 | No top-level folder outside the AGENTS.md layout | `reports/: top-level folder not in the allowlist in scripts/check-conventions.mjs` |
 | 5 | Files under `tests/` are `*.spec.ts` or `*.setup.ts` | `tests/utils.ts: files under tests/ must be *.spec.ts or *.setup.ts` |
+| 6 | No `CLAUDE.md` / `.claude/CLAUDE.md` / `CLAUDE.local.md`; `AGENTS.md` ≤ 12,000 characters | `CLAUDE.md: remove it; AGENTS.md is the single instruction file …` |
+| 7 | Every `.agents/skills/<name>/SKILL.md` has a `.claude/skills/<name>/SKILL.md` pointer with identical frontmatter, and no pointer is orphaned | `.claude/skills/x/SKILL.md: frontmatter differs from .agents/skills/x/SKILL.md; copy it verbatim` |
+
+**Why (6–7):** contributors use different AI tools. Claude Code, Cursor, Codex and
+Antigravity all read `AGENTS.md`, but Claude Code reads it only when no `CLAUDE.md`
+exists, and Antigravity caps a rules file at 12,000 characters. Codex, Cursor and
+Antigravity discover skills in `.agents/skills/`; Claude Code only in
+`.claude/skills/`, hence the pointers. Discovery matches on the frontmatter
+`description`, so the two copies must stay identical. (Cursor also reads
+`.claude/skills/`, so it lists each skill twice; harmless.)
 
 **Why:** one class per file named after the file lets anyone (and any agent) find a
 screen's Page Object without searching. An unregistered fixture file is invisible to

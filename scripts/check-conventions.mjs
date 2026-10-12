@@ -51,7 +51,7 @@ const repoFiles = execSync('git ls-files --cached --others --exclude-standard', 
 
 // 4. no new top-level folder without an approved change (AGENTS.md folder layout). Extend this list in the same change.
 const TOP_LEVEL_DIRS = new Set([
-  '.agents', '.ui-evidence', 'bug-reports', 'components', 'config', 'data', 'docs', 'fixtures',
+  '.agents', '.claude', '.ui-evidence', 'bug-reports', 'components', 'config', 'data', 'docs', 'fixtures',
   'helpers', 'models', 'pages', 'scripts', 'tests', 'utils',
 ]);
 for (const dir of new Set(repoFiles.filter((f) => f.includes('/')).map((f) => f.split('/')[0]))) {
@@ -61,6 +61,34 @@ for (const dir of new Set(repoFiles.filter((f) => f.includes('/')).map((f) => f.
 // 5. tests/**/*.ts are specs or setup files; shared code belongs in helpers/, utils/ or fixtures/
 for (const f of repoFiles.filter((p) => p.startsWith('tests/') && p.endsWith('.ts'))) {
   if (!/\.(spec|setup)\.ts$/.test(f)) errors.push(`${f}: files under tests/ must be *.spec.ts or *.setup.ts`);
+}
+
+// 6. Agent instructions work in every tool (Claude Code, Cursor, Codex, Antigravity).
+//    AGENTS.md is the single instruction file: a CLAUDE.md would make Claude Code ignore it,
+//    and Antigravity caps a rules file at 12,000 characters.
+for (const f of ['CLAUDE.md', '.claude/CLAUDE.md', 'CLAUDE.local.md']) {
+  if (existsSync(f)) errors.push(`${f}: remove it; AGENTS.md is the single instruction file (a CLAUDE.md makes Claude Code skip AGENTS.md)`);
+}
+if (existsSync('AGENTS.md')) {
+  const size = readFileSync('AGENTS.md', 'utf8').length;
+  if (size > 12000) errors.push(`AGENTS.md: ${size} characters; Antigravity reads at most 12,000. Move detail into a skill`);
+}
+
+// 7. Skills live in .agents/skills/<name>/SKILL.md (Codex, Cursor, Antigravity discover them there).
+//    Claude Code only discovers .claude/skills/, so each skill has a pointer there whose
+//    frontmatter (name + description, used for discovery) is identical to the skill's.
+const frontmatterOf = (file) => readFileSync(file, 'utf8').replace(/\r\n/g, '\n').match(/^---\n[\s\S]*?\n---\n/)?.[0];
+const skillNames = existsSync('.agents/skills') ? readdirSync('.agents/skills').filter((n) => existsSync(`.agents/skills/${n}/SKILL.md`)) : [];
+const pointerNames = existsSync('.claude/skills') ? readdirSync('.claude/skills') : [];
+for (const name of skillNames) {
+  const pointer = `.claude/skills/${name}/SKILL.md`;
+  const fm = frontmatterOf(`.agents/skills/${name}/SKILL.md`);
+  if (!fm) errors.push(`.agents/skills/${name}/SKILL.md: missing --- frontmatter (name + description)`);
+  else if (!existsSync(pointer)) errors.push(`${pointer}: missing pointer for skill ${name} (Claude Code can't discover it)`);
+  else if (frontmatterOf(pointer) !== fm) errors.push(`${pointer}: frontmatter differs from .agents/skills/${name}/SKILL.md; copy it verbatim`);
+}
+for (const name of pointerNames) {
+  if (!skillNames.includes(name)) errors.push(`.claude/skills/${name}: pointer to a skill that doesn't exist in .agents/skills/`);
 }
 
 if (errors.length) {

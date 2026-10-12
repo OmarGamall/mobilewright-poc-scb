@@ -60,6 +60,9 @@ target screen (it only reads the screen and writes `.ui-evidence/`).
 - New or changed locator with no evidence → `mobilewright-ui-tree-extractor`
   skill. Unknown app behavior (what a screen shows after an action, which data
   it displays) → ask.
+- `.ui-evidence/` is local to each machine and never committed. A capture you
+  need that isn't there (fresh clone, other machine) means: ask the user to
+  capture that screen. `Evidence:` lines in code name the capture to re-create.
 - A capture can be stale. If it contradicts code that a passing test exercises,
   trust the code, flag the capture, and ask for a re-capture.
 - Expected values in assertions come from test data or the user, never from
@@ -78,6 +81,12 @@ target screen (it only reads the screen and writes `.ui-evidence/`).
   in its owner.
 - Tests are independent (no order or shared mutable state); data that can
   collide is generated per run.
+- Agent files must work in every tool (Claude Code, Cursor, Codex, Antigravity):
+  this `AGENTS.md` is the only instruction file; never add a `CLAUDE.md` (Claude
+  Code would stop reading this file). Skills live in
+  `.agents/skills/<name>/SKILL.md`; `.claude/skills/<name>/SKILL.md` is a pointer
+  with the identical frontmatter, so a new or renamed skill, or a changed
+  `description`, updates both.
 
 ## 6. Read before you act
 
