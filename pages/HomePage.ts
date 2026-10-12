@@ -2,6 +2,7 @@ import type { Screen } from '@mobilewright/core';
 import { DatePicker, type PickerDate } from '../components/DatePicker';
 import { Checkbox } from '../components/Checkbox';
 import { BottomNavBar, type NavTab } from '../components/BottomNavBar';
+import { dismissKeyboard } from '../helpers/keyboard';
 import { step } from '../utils/step';
 import { expect } from '@mobilewright/test';
 
@@ -58,12 +59,13 @@ export class HomePage {
   // Tier 1 — Composite actions
 
   /**
-   * Fills the username field.
+   * Fills the username field and closes the keyboard.
    * @param username - The username to enter.
    */
   @step('Input username "{0}"')
   async inputUsername(username: string): Promise<void> {
     await this.getUsernameInput().fill(username);
+    await dismissKeyboard(this.screen);
   }
 
   /**

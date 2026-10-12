@@ -36,7 +36,8 @@ export class BottomNavBar {
 
   /**
    * Taps the specified bottom navigation tab to navigate to it.
-   * Automatically dismisses the software keyboard first to ensure the tab is hittable.
+   * Closes the keyboard first: screens can auto-focus a field on arrival (Home
+   * does after login), and the open keyboard covers the nav bar.
    * @param tab - The tab to navigate to ('Home', 'Profile', or 'Menu').
    */
   @step('Navigate to tab "{0}"')

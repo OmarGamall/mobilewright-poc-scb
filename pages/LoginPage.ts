@@ -1,5 +1,6 @@
 import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
+import { dismissKeyboard } from '../helpers/keyboard';
 import { step } from '../utils/step';
 
 /**
@@ -66,6 +67,9 @@ export class LoginPage {
     // Assert that the username and password are correct
     await this.verifyUsernameText(username);
     await this.verifyPasswordText(password);
+
+    // Close the keyboard so it can't cover the submit button
+    await dismissKeyboard(this.screen);
 
     // Tap the submit button
     await this.getSubmitButton().tap();
