@@ -4,8 +4,10 @@ test.describe('Home Page Features', () => {
   
   test('User can complete the entire Phase 3 form successfully', async ({ homePage }) => {
 
+    const username = 'omar_phase3';
+
     // 1. Input username
-    await homePage.inputUsername('omar_phase3');
+    await homePage.inputUsername(username);
 
     // 2. Select a country
     await homePage.selectCountry('Egypt');
@@ -15,6 +17,10 @@ test.describe('Home Page Features', () => {
 
     // 4. Interact with terms checkbox
     await homePage.setTermsCheckboxState(true);
+
+    // 5. Verify the entered values stuck
+    await homePage.verifyUsername(username);
+    await homePage.verifyTermsChecked(true);
   });
 
   test('User can navigate to Profile tab from Home screen', async ({ homePage, profilePage }) => {

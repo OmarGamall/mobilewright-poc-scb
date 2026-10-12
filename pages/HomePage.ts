@@ -25,10 +25,14 @@ export class HomePage {
     return this.screen.getByLabel('Phase 3');
   }
 
-  private getUsernameInput() {
+  /**
+   * @param value - Optional text the field must contain; Flutter exposes a textfield's
+   *   text as its accessible name (same pattern as LoginPage.verifyUsernameText).
+   */
+  private getUsernameInput(value?: string) {
     return this.screen
       .getByLabel('LOGIN_INPUT_USERNAME')
-      .getByRole('textfield');
+      .getByRole('textfield', value === undefined ? undefined : { name: value });
   }
 
   private getCountryDropdown() {
@@ -114,6 +118,24 @@ export class HomePage {
   @step('Verify on Phase 3 screen')
   async verifyOnPhase3Screen(): Promise<void> {
     await expect(this.getPhase3Label()).toBeVisible();
+  }
+
+  /**
+   * Verifies that the username field contains the expected text.
+   * @param username - The exact username expected in the field.
+   */
+  @step('Verify username is "{0}"')
+  async verifyUsername(username: string): Promise<void> {
+    await expect(this.getUsernameInput(username)).toBeVisible();
+  }
+
+  /**
+   * Verifies the terms checkbox is in the expected checked state.
+   * @param checked - True if the terms checkbox should be checked, false if unchecked.
+   */
+  @step('Verify terms checkbox checked state is {0}')
+  async verifyTermsChecked(checked: boolean): Promise<void> {
+    await this.getTermsCheckbox().verifyChecked(checked);
   }
 
   /**

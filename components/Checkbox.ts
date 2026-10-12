@@ -1,4 +1,5 @@
 import type { Screen } from '@mobilewright/core';
+import { expect } from '@mobilewright/test';
 import { step } from '../utils/step';
 
 type Locator = ReturnType<Screen['getByRole']>;
@@ -60,5 +61,18 @@ export class Checkbox {
    */
   async isChecked(): Promise<boolean> {
     return await this.locator.isChecked();
+  }
+
+  /**
+   * Asserts the checkbox is in the expected checked state.
+   * @param expected - True if the checkbox should be checked, false if unchecked.
+   */
+  @step('Verify checkbox checked state is {0}')
+  async verifyChecked(expected: boolean): Promise<void> {
+    if (expected) {
+      await expect(this.locator).toBeChecked();
+    } else {
+      await expect(this.locator).not.toBeChecked();
+    }
   }
 }
