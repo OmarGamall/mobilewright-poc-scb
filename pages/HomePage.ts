@@ -93,7 +93,7 @@ export class HomePage {
    * Opens the Date Picker and selects a specific date.
    * @param date - The PickerDate object (year, month, day) to select.
    */
-  @step('Select date "{0}"')
+  @step('Select date {0.year}-{0.month}-{0.day}')
   async selectDate(date: PickerDate): Promise<void> {
     await this.getDatePickerButton().tap();
     await new DatePicker(this.screen).pick(date);

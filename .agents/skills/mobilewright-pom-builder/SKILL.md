@@ -164,8 +164,11 @@ to another annotated method nor a mechanical loop/retry helper.
   value-returning methods, loop/retry helpers (e.g. `scrollYears`), pure forwarders
   (the owning layer keeps the decorator).
 - **Templates:** `{0}`, `{1}` interpolate arguments; quote string arguments
-  (`"{0}"`), not object arguments. Never interpolate sensitive arguments (passwords,
-  tokens); if one must appear, list its index in `{ mask: [n] }`.
+  (`"{0}"`). For an object use its fields (`{0.year}-{0.month}-{0.day}`), never
+  the whole object. Never interpolate sensitive arguments (passwords, tokens); if
+  one must appear, list its index in `{ mask: [n] }`.
+- **Don't pass `box`:** the default keeps the full stack, so a failure inside a
+  composite step shows the exact inner line.
 - **Borderline?** Leave it undecorated and flag it for review.
 
 ## 5. Synchronization

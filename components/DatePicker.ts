@@ -107,7 +107,7 @@ export class DatePicker {
    * @param date - The target date to be picked (year, month 1-12, day).
    * @throws {Error} If the provided date is invalid or UI elements are not found.
    */
-  @step('Pick date {0}')
+  @step('Pick date {0.year}-{0.month}-{0.day}')
   async pick(date: PickerDate): Promise<void> {
     assertValidDate(date);
     await this.waitUntilOpen();
@@ -157,7 +157,7 @@ export class DatePicker {
   }
 
   /** Picking a year keeps the displayed month, so navigate whichever way is needed. */
-  @step('Go to month {0}')
+  @step('Go to month {0.year}-{0.month}')
   private async goToMonth(target: MonthView): Promise<void> {
     await this.waitOrThrow(this.prevMonthButton(), 'Calendar did not return after year selection');
 
@@ -174,7 +174,7 @@ export class DatePicker {
     );
   }
 
-  @step('Select day {0}')
+  @step('Select day {0.year}-{0.month}-{0.day}')
   private async selectDay(date: PickerDate): Promise<void> {
     const dayButton = this.dayButton(date);
     await this.waitOrThrow(
