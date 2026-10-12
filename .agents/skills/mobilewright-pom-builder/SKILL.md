@@ -115,11 +115,11 @@ to stay high.
 
 | # | Locator | Matches (Android) | Use when |
 |---|---|---|---|
-| 1 | `getByTestId(id)` | `resource-id` (Flutter `Semantics(identifier:)`) | `identifier` appears in `<screen>-tree.json`. Stable across locale and copy changes |
+| 1 | `getByTestId(id)` | `resource-id` (Flutter `Semantics(identifier:)`) | `identifier:` appears in the capture. Stable across locale and copy changes. Pass the bare id; `pkg:id/name` also matches `name` |
 | 2 | `getByLabel(label)` | accessibility label (`content-desc`) | The app sets semantic labels: the `UPPER_SNAKE` keys here (`LOGIN_INPUT_USERNAME`) are deliberate test hooks |
 | 3 | `getByRole(role, { name })` | native type mapped to a role, + label (or text) | No unique label, but role + name is unique. Roles: `button`, `textfield`, `checkbox`, `radio`, `switch`, `tab`, `text`, `image`, `list`, `listitem`, … (full list: `ROLE_TYPE_MAP` in `query-engine.d.ts`) |
 | 4 | `getByText(text)` | visible text, else label | Static visible copy only; breaks on translation and copy edits |
-| — | `getByPlaceholder` | `placeholder` (input hint) | Not captured by the extractor yet, so there is no evidence; don't use |
+| 5 | `getByPlaceholder(text)` | `placeholder` (input hint) | An empty input whose only handle is its hint (`placeholder:` in the capture); breaks on translation like text |
 | — | `getByType(type)` | raw native class (`android.widget.EditText`) | Platform-specific; last resort, with a comment giving the reason |
 
 **Matching precision** (a near-match makes a test pass on the wrong element):

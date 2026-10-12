@@ -15,6 +15,7 @@ interface RawNode {
   text?: string;
   label?: string;
   identifier?: string;
+  placeholder?: string;
   rect: { x: number; y: number; width: number; height: number };
   children?: RawNode[];
   focused?: boolean;
@@ -38,6 +39,7 @@ interface FilteredNode {
   label?: string;
   text?: string;
   identifier?: string;
+  placeholder?: string;
   focused?: boolean;
   checked?: boolean;
   selected?: boolean;
@@ -61,11 +63,18 @@ const LAYOUT_TYPES = new Set([
 // Filter helpers
 // ============================================================================
 
+/** True for a resource-id the app set (getByTestId); excludes Android framework and system UI ids. */
+function isAppIdentifier(id: string | undefined): id is string {
+  return Boolean(id) && !id!.startsWith('android:id/') && !id!.startsWith('com.android.systemui');
+}
+
 /** True if a node carries accessible meaning an agent can use for locators. */
 function hasSemantic(node: RawNode): boolean {
   return Boolean(
     node.label ||
     (node.text && node.text.trim()) ||
+    isAppIdentifier(node.identifier) ||
+    node.placeholder ||
     node.focused ||
     node.checked !== undefined ||
     node.selected !== undefined,
@@ -111,8 +120,8 @@ function filterNode(node: RawNode): FilteredNode | null {
     ...(node.label !== undefined && { label: node.label }),
     ...(text !== undefined && { text }),
     // Keep identifier only for app content (not system UI — already excluded at root level)
-    ...(node.identifier &&
-      !node.identifier.startsWith('com.android.systemui') && { identifier: node.identifier }),
+    ...(isAppIdentifier(node.identifier) && { identifier: node.identifier }),
+    ...(node.placeholder && { placeholder: node.placeholder }),
     ...(node.focused && { focused: true }),
     ...(node.checked !== undefined && { checked: node.checked }),
     ...(node.selected !== undefined && { selected: node.selected }),
@@ -157,6 +166,8 @@ function toYaml(nodes: FilteredNode[], indentLevel = 0): string {
     const isPassthrough =
       !node.label &&
       !node.text &&
+      !node.identifier &&
+      !node.placeholder &&
       !node.focused &&
       node.checked === undefined &&
       node.selected === undefined;
@@ -170,6 +181,8 @@ function toYaml(nodes: FilteredNode[], indentLevel = 0): string {
     lines.push(`${pad}- type: ${node.type}`);
     if (node.label !== undefined) lines.push(`${pad}  label: ${JSON.stringify(node.label)}`);
     if (node.text !== undefined)  lines.push(`${pad}  text: ${JSON.stringify(node.text)}`);
+    if (node.identifier !== undefined)  lines.push(`${pad}  identifier: ${JSON.stringify(node.identifier)}`);
+    if (node.placeholder !== undefined) lines.push(`${pad}  placeholder: ${JSON.stringify(node.placeholder)}`);
     if (node.focused)             lines.push(`${pad}  focused: true`);
     if (node.checked !== undefined)  lines.push(`${pad}  checked: ${node.checked}`);
     if (node.selected !== undefined) lines.push(`${pad}  selected: ${node.selected}`);
@@ -261,8 +274,9 @@ export function dumpUITree(screenName: string): void {
     `# UI Evidence — ${screenName}`,
     `# Generated: ${new Date().toISOString()}`,
     `# Text values on EditText nodes are REDACTED.`,
-    `# Use the labels and roles below to build Mobilewright locators.`,
-    `# Locator priority: getByLabel > getByRole > getByText`,
+    `# Use the identifiers, labels and roles below to build Mobilewright locators.`,
+    `# Locator priority: getByTestId(identifier) > getByLabel > getByRole > getByText`,
+    `# placeholder → getByPlaceholder (input hint text).`,
     ``,
     `elements:`,
     ``,
