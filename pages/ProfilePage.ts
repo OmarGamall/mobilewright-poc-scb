@@ -1,5 +1,7 @@
 import type { Screen } from '@mobilewright/core';
+import { expect } from '@mobilewright/test';
 import { BottomNavBar, type NavTab } from '../components/BottomNavBar';
+import { step } from '../utils/step';
 
 /**
  * @fileoverview Page Object Model for the Profile screen.
@@ -7,11 +9,7 @@ import { BottomNavBar, type NavTab } from '../components/BottomNavBar';
  * Evidence: .ui-evidence/profile-locators.yml
  */
 export class ProfilePage {
-  readonly screen: Screen;
-
-  constructor(screen: Screen) {
-    this.screen = screen;
-  }
+  constructor(private readonly screen: Screen) {}
 
   // ============================================================================
   // LOCATORS (private factory methods)
@@ -46,8 +44,9 @@ export class ProfilePage {
    * Profile header to become visible.
    * Evidence: View label "Profile" confirmed in .ui-evidence/profile-locators.yml
    */
+  @step('Verify on Profile screen')
   async verifyOnProfileScreen(): Promise<void> {
-    await this.getProfileHeader().waitFor({ state: 'visible' });
+    await expect(this.getProfileHeader()).toBeVisible();
   }
 
   // ============================================================================

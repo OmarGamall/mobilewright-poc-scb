@@ -11,11 +11,7 @@ import { expect } from '@mobilewright/test';
  * checkboxes, date pickers, and bottom navigation.
  */
 export class HomePage {
-  readonly screen: Screen;
-
-  constructor(screen: Screen) {
-    this.screen = screen;
-  }
+  constructor(private readonly screen: Screen) {}
 
   // ============================================================================
   // LOCATORS (private factory methods)

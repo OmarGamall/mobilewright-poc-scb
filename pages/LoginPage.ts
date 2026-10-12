@@ -1,30 +1,36 @@
 import type { Screen } from '@mobilewright/core';
+import { expect } from '@mobilewright/test';
+import { step } from '../utils/step';
 
 /**
  * @fileoverview Page Object Model for the Login screen.
  * Handles user authentication, password masking toggle, and input validations.
  */
 export class LoginPage {
-  readonly screen: Screen;
-
-  constructor(screen: Screen) {
-    this.screen = screen;
-  }
+  constructor(private readonly screen: Screen) {}
 
   // ============================================================================
   // LOCATORS (private factory methods)
   // ============================================================================
 
-  private getUsernameInput() {
+  /**
+   * @param value - Optional text the field must contain; Flutter exposes a textfield's
+   *   text as its accessible name.
+   */
+  private getUsernameInput(value?: string) {
     return this.screen
       .getByLabel('LOGIN_INPUT_USERNAME')
-      .getByRole('textfield');
+      .getByRole('textfield', value === undefined ? undefined : { name: value });
   }
 
-  private getPasswordInput() {
+  /**
+   * @param value - Optional text (or pattern) the field must contain. A masked
+   *   field's accessible name is bullets (•).
+   */
+  private getPasswordInput(value?: string | RegExp) {
     return this.screen
       .getByLabel('LOGIN_INPUT_PASSWORD')
-      .getByRole('textfield');
+      .getByRole('textfield', value === undefined ? undefined : { name: value });
   }
 
   private getPasswordVisibilityToggle() {
@@ -44,8 +50,31 @@ export class LoginPage {
   // ============================================================================
 
   /**
+   * Encapsulates the standard login action.
+   * Fills credentials, optionally unmasks password, verifies text inputs, and submits.
+   * @param username - The username to enter.
+   * @param password - The password to enter.
+   */
+  @step('Login as "{0}"') // password is never interpolated
+  async login(username: string, password: string): Promise<void> {
+    await this.getUsernameInput().fill(username);
+    await this.getPasswordInput().fill(password);
+
+    // Optionally unmask the password before submitting, to verify it on UI
+    await this.unmaskPassword();
+
+    // Assert that the username and password are correct
+    await this.verifyUsernameText(username);
+    await this.verifyPasswordText(password);
+
+    // Tap the submit button
+    await this.getSubmitButton().tap();
+  }
+
+  /**
    * Masks the password field if it is currently unmasked.
    */
+  @step('Mask password')
   async maskPassword(): Promise<void> {
     const isMasked = await this.isPasswordMasked();
     if (!isMasked) {
@@ -56,6 +85,7 @@ export class LoginPage {
   /**
    * Unmasks the password field if it is currently masked.
    */
+  @step('Unmask password')
   async unmaskPassword(): Promise<void> {
     const isMasked = await this.isPasswordMasked();
     if (isMasked) {
@@ -63,53 +93,25 @@ export class LoginPage {
     }
   }
 
-  /**
-   * Encapsulates the standard login action.
-   * Fills credentials, optionally unmasks password, verifies text inputs, and submits.
-   * @param username - The username to enter.
-   * @param password - The password to enter.
-   */
-  async login(username: string, password: string): Promise<void> {
-    await this.getUsernameInput().fill(username);
-    await this.getPasswordInput().fill(password);
-    
-    // Optionally unmask the password before submitting, to verify it on UI
-    await this.unmaskPassword();
-    
-    // Assert that the username and password are correct
-    await this.verifyUsernameText(username);
-    await this.verifyPasswordText(password);
-
-    // Tap the submit button
-    await this.getSubmitButton().tap();
-  }
-
   // ============================================================================
   // VERIFY METHODS
   // ============================================================================
 
   /**
-   * Verifies if the password field is currently masked (displays bullets).
+   * Returns whether the password field is currently masked (displays bullets).
    * @returns {Promise<boolean>} True if the field is masked.
    */
   async isPasswordMasked(): Promise<boolean> {
-    // A masked password field will have bullets (•) in its accessible name.
-    const maskedField = this.screen
-      .getByLabel('LOGIN_INPUT_PASSWORD')
-      .getByRole('textfield', { name: /•/ });
-      
-    return await maskedField.isVisible();
+    return await this.getPasswordInput(/•/).isVisible();
   }
 
   /**
    * Verifies that the username field contains the expected text.
    * @param expectedUsername - The exact username string expected in the field.
    */
+  @step('Verify username is "{0}"')
   async verifyUsernameText(expectedUsername: string): Promise<void> {
-    const field = this.screen
-      .getByLabel('LOGIN_INPUT_USERNAME')
-      .getByRole('textfield', { name: expectedUsername });
-    await field.waitFor({ state: 'visible' });
+    await expect(this.getUsernameInput(expectedUsername)).toBeVisible();
   }
 
   /**
@@ -117,11 +119,9 @@ export class LoginPage {
    * Note: Password field must be unmasked for this to match the literal string.
    * @param expectedPassword - The exact password string expected in the field.
    */
+  @step('Verify password text') // the password must never appear in the report
   async verifyPasswordText(expectedPassword: string): Promise<void> {
-    const field = this.screen
-      .getByLabel('LOGIN_INPUT_PASSWORD')
-      .getByRole('textfield', { name: expectedPassword });
-    await field.waitFor({ state: 'visible' });
+    await expect(this.getPasswordInput(expectedPassword)).toBeVisible();
   }
 
   // ============================================================================
