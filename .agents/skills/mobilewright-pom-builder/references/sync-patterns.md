@@ -21,20 +21,21 @@ the soft keyboard, a closing sheet, a toast. Wait for the cover to go away
 
 ## Screen transitions
 
-End the action that changes screen by waiting for the new screen's anchor, so
-the caller never acts on the old screen mid-transition:
+An action that changes screen returns after its tap. **The caller verifies the
+destination** through the destination's POM, so no POM touches another
+screen's locators:
 
 ```typescript
 @step('Login as "{0}"') // password is never interpolated
 async login(username: string, password: string): Promise<void> {
-  // … fill + tap submit …
+  // … fill + dismissKeyboard + tap submit …
 }
-// The caller (or the auth fixture) then asserts the destination:
+// The caller (spec or the auth fixture) asserts the destination:
 await homePage.verifyOnPhase3Screen();
 ```
 
-Either the action waits for the anchor itself, or every caller is required to
-verify it; pick one per action and keep it consistent.
+If the *same* method acts again after the transition and could still hit the
+old screen, first wait for this screen's own anchor to be hidden.
 
 ## Pickers, bottom sheets, dialogs
 
@@ -76,10 +77,21 @@ short settle delay with a disable reason (see `DatePicker.scrollYears`).
 ## Keyboard
 
 After `fill()`, the keyboard stays open and can cover the lower half of the
-screen. Before tapping anything that may sit under it (nav bar, bottom
-buttons), the owning POM/component calls `dismissKeyboard(this.screen)` from
-`helpers/keyboard.ts` (it sends Android Back). Don't call it when no keyboard is
-open: Back would navigate away.
+screen. Mobilewright has no API to detect it, and the only way to close it is
+Android Back (`dismissKeyboard` in `helpers/keyboard.ts`), which navigates
+away when no keyboard is open. So Back is sent only when we *know* the keyboard
+is open: by **the method that typed**, after its last `fill()` and before any
+tap that isn't another text field:
+
+```typescript
+@step('Input username "{0}"')
+async inputUsername(username: string): Promise<void> {
+  await this.getUsernameInput().fill(username);
+  await dismissKeyboard(this.screen);
+}
+```
+
+Components that only tap (nav bar, pickers) never press Back.
 
 ## App state and relaunch
 

@@ -26,7 +26,7 @@ a value: `.getByRole('textfield', { name: expected })` (see
 ## 2. Typed-key factory (one of a fixed set)
 
 The key is a union type, so a typo fails at compile time and three tabs don't
-become three methods. Evidence: `dummy-screen-locators.yml`
+become three methods. Evidence: `home-locators.yml`
 (`Button "Home\nTab 1 of 3"`, `"Profile\nTab 2 of 3"`, `"Menu\nTab 3 of 3"`).
 
 ```typescript
@@ -45,8 +45,8 @@ future `"Home settings"` tab would also match. (Source: `BottomNavBar.getTab`.)
 ## 3. Runtime-data factory (identity comes from test data)
 
 Use a plain string: `getByRole` `name` strings match exactly, so `India` can't
-match `British Indian Ocean Territory`. Evidence: `HomePage.getCountryOption`,
-exercised by the passing Phase 3 form test (no capture of the open dropdown yet).
+match `British Indian Ocean Territory`. Evidence: `home-country-dropdown-locators.yml`
+(`Button "Egypt"`, `Button "India"`).
 
 ```typescript
 private getCountryOption(country: string) {
@@ -91,9 +91,49 @@ private getTermsCheckbox() {
 }
 
 // components/Checkbox.ts
+import type { Locator } from '@mobilewright/core';
+
 export class Checkbox {
   constructor(private readonly locator: Locator) {}
 }
+```
+
+## 6. Merged label on a role-less View
+
+Flutter often merges a card's texts into one `View` label. `View` maps to no
+role and `getByLabel` takes no regex, so anchor `getByText` on the card's
+fixed heading (`getByText`/`getText` fall back to the label), then assert a
+field with an escaped, anchored regex. Evidence: `profile-locators.yml`
+(`View "User Profile\nUsername:\n<name>\nEmail:\n<email>"`).
+
+```typescript
+private getUserProfileCard() {
+  return this.screen.getByText(/^User Profile\n/);
+}
+
+@step('Verify profile shows username "{0}"')
+async verifyUsername(username: string): Promise<void> {
+  await expect(this.getUserProfileCard(), 'profile card shows the username')
+    .toHaveText(new RegExp(`\\nUsername:\\n${escapeRegExp(username)}(\\n|$)`));
+}
+```
+
+The `(\n|$)` end anchor stops `omar` from matching `omar_phase3`. The expected
+username comes from the spec (test data), not from the capture.
+
+## 7. Overlay anchor for a close wait
+
+An open dropdown or sheet often adds a node that exists only while it is open:
+wait for that node to be hidden before returning. Evidence:
+`home-country-dropdown-locators.yml` has `View "Dismiss"` (the barrier behind
+the open list); `home-locators.yml` (list closed) has none.
+
+```typescript
+private getDropdownBarrier() {
+  return this.screen.getByLabel('Dismiss');
+}
+// after tapping an option:
+await this.getDropdownBarrier().waitFor({ state: 'hidden' });
 ```
 
 ## Don't
