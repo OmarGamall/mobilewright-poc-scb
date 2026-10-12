@@ -76,22 +76,61 @@ short settle delay with a disable reason (see `DatePicker.scrollYears`).
 
 ## Keyboard
 
-After `fill()`, the keyboard stays open and can cover the lower half of the
-screen. Mobilewright has no API to detect it, and the only way to close it is
-Android Back (`dismissKeyboard` in `helpers/keyboard.ts`), which navigates
-away when no keyboard is open. So Back is sent only when we *know* the keyboard
-is open: by **the method that typed**, after its last `fill()` and before any
-tap that isn't another text field:
+**How it opens.** `fill()` taps the field, clears it (`ctrl+a`, `backspace`)
+and sends the text through the device. The *tap* focuses the field, and focus
+is what raises the soft keyboard. A screen can also focus a field by itself:
+**Home auto-focuses the username field after login**, so the keyboard is open
+with no typing by our code. An open keyboard covers the lower half of the
+screen (nav bar, submit), and a tap there lands on the keyboard.
+
+**How to close it.** Mobilewright has no API to detect or hide the keyboard.
+`dismissKeyboard(screen)` in `helpers/keyboard.ts` sends `ENTER`
+(`screen.pressButton('ENTER')`). Call it:
+
+1. in the method that typed, after its last `fill()`;
+2. right before tapping anything a keyboard may cover.
 
 ```typescript
+// pages/HomePage.ts — after typing
 @step('Input username "{0}"')
 async inputUsername(username: string): Promise<void> {
   await this.getUsernameInput().fill(username);
   await dismissKeyboard(this.screen);
 }
+
+// components/BottomNavBar.ts — before a tap the keyboard may cover
+// (today it also carries @step; per the SKILL.md layering rule that moves to the pages)
+async navigateTo(tab: NavTab): Promise<void> {
+  await dismissKeyboard(this.screen);
+  await this.getTab(tab).tap();
+}
 ```
 
-Components that only tap (nav bar, pickers) never press Back.
+**Never use Back (`screen.goBack()`) for the keyboard:** with no keyboard open
+it navigates away. The old Back in `BottomNavBar` only worked because Home's
+auto-focused field meant a keyboard was always open there; removing it made the
+Profile-navigation test fail 3/3 (the tab tap landed on the keyboard).
+
+**Verified** on a real Android device (AU3N025B20000393, this app):
+
+| Situation | ENTER does |
+|---|---|
+| Keyboard open on a single-line field | closes it and clears the field's focus |
+| Password field on Login | closes it; does **not** submit the form (`login.spec` passes, so the submit button was still there to tap) |
+| No field focused | nothing (manual check) |
+| Home after login (auto-focused field) | closes it; the nav-bar tap then works |
+
+**Not verified — check before relying on it:**
+- Android emulators: whether a soft keyboard appears at all depends on the AVD's
+  hardware-keyboard setting. ENTER should still be harmless, but run the specs
+  there once.
+- iOS (simulator or device): not tested; the project is Android-only today.
+- ENTER on Login's **username** field: `login()` only sends ENTER after the
+  password, so it was never exercised. If a field's keyboard action is "next",
+  ENTER moves focus to the next field and the keyboard stays open.
+- Multi-line fields (ENTER inserts a new line instead of closing).
+- Before relying on ENTER for a new field, try it on the device and add a row
+  to the table above.
 
 ## App state and relaunch
 

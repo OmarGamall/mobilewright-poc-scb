@@ -168,13 +168,20 @@ to stay high.
   any spec calls them; refactoring the callers doesn't make them private as a
   side effect (flag instead).
 - No generic wrappers (`tapElement`, `safeFill`).
-- **Keyboard:** after `fill()` the soft keyboard stays open and can cover
-  bottom-of-screen targets (nav bar, submit). Mobilewright cannot detect an open
-  keyboard, and the only way to close it is Back, which navigates away if no
-  keyboard is open. So **the method that types closes it**: after its last
-  `fill()`, before any tap that isn't another text field, it calls
-  `dismissKeyboard(this.screen)` from `helpers/keyboard.ts`. Nothing else
-  presses Back to close a keyboard; specs never do.
+- **Keyboard:** an open soft keyboard covers bottom-of-screen targets (nav bar,
+  submit), and a tap there lands on the keyboard. It opens when a field gets
+  focus: after our `fill()`, **and also when a screen auto-focuses a field on
+  arrival** (Home does after login). Mobilewright cannot detect an open keyboard.
+  Close it with `dismissKeyboard(this.screen)` from `helpers/keyboard.ts`
+  (sends ENTER; on the tested Android device it closes the keyboard and does
+  nothing when none is open):
+  1. in the method that typed, after its last `fill()`;
+  2. in the POM/component that taps something a keyboard may cover, right
+     before that tap (see `BottomNavBar.navigateTo`).
+
+  Never press Back to close a keyboard: with no keyboard open it navigates away.
+  Specs never handle the keyboard. Details and what is verified:
+  `references/sync-patterns.md` § Keyboard.
 
 ### `@step` reporting rule (import from `../utils/step`)
 
