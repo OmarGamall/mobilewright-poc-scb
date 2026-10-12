@@ -96,6 +96,15 @@ export class DatePicker {
     return this.screen.getByRole('button', { name: /^Apply$/ });
   }
 
+  /**
+   * Any year in the open year list; used as the start point for swipes so the
+   * gesture lands inside the list. Only year buttons have 4-digit labels.
+   * Evidence: .ui-evidence/date-picker-years-locators.yml (Button "2009" … "2026").
+   */
+  private anyYearButton() {
+    return this.screen.getByRole('button', { name: /^\d{4}$/ });
+  }
+
   // ============================================================================
   // ACTIONS
   // ============================================================================
@@ -117,6 +126,8 @@ export class DatePicker {
     await this.goToMonth(date);
     await this.selectDay(date);
     await this.applyButton().tap();
+    // The sheet must be gone before the page taps again, or the tap hits the closing sheet.
+    await this.waitOrThrow(this.title(), 'Date picker did not close after Apply', 'hidden');
   }
 
   // ============================================================================
@@ -186,12 +197,13 @@ export class DatePicker {
 
   /**
    * 'older' reveals earlier years (finger moves down), 'newer' the opposite.
-   * UNPROVEN: the swipe is screen-wide. Replace with a scoped scroll/drag when supported.
+   * The swipe starts on a year button, so it scrolls the year list rather than
+   * whatever sits at the screen center.
    * Requires a short setTimeout to allow the swipe animation to settle because
    * there is no observable UI ready-signal for scroll completion.
    */
   private async scrollYears(direction: 'older' | 'newer'): Promise<void> {
-    await this.screen.swipe(direction === 'older' ? 'down' : 'up');
+    await this.anyYearButton().swipe({ direction: direction === 'older' ? 'down' : 'up' });
 
     // eslint-disable-next-line no-restricted-syntax -- Flutter emits no scroll-end/layout-stable signal; wait for the fling to stop
     await new Promise((resolve) => setTimeout(resolve, SCROLL_SETTLE_MS));
@@ -202,10 +214,14 @@ export class DatePicker {
     return parseHeaderLabel(label);
   }
 
-  /** Waits for visibility; on timeout, throws a message that says what was expected. */
-  private async waitOrThrow(locator: Locator, failureMessage: string): Promise<void> {
+  /** Waits for the state (default visible); on timeout, throws a message that says what was expected. */
+  private async waitOrThrow(
+    locator: Locator,
+    failureMessage: string,
+    state: 'visible' | 'hidden' = 'visible',
+  ): Promise<void> {
     try {
-      await locator.waitFor({ state: 'visible' });
+      await locator.waitFor({ state });
     } catch (error) {
       throw new Error(`${failureMessage}\nCaused by: ${(error as Error).message}`, { cause: error });
     }

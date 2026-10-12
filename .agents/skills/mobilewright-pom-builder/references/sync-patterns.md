@@ -49,23 +49,25 @@ async pick(date: PickerDate): Promise<void> {
 }
 ```
 
-(`DatePicker.pick` today ends at the Apply tap without a hidden wait. Before
-adding one, confirm with a capture that the `Select Date` title is gone after
-Apply.)
+Real version: `DatePicker.pick`. The hidden wait is backed by evidence that the
+title is absent once the sheet closes (`dummy-screen-locators.yml` has no
+`Select Date`); confirm the equivalent for any new sheet.
 
 ## Scrolling
 
 | Need | Use |
 |---|---|
 | Bring an element into view | `locator.scrollIntoViewIfNeeded({ direction, maxSwipes })` |
-| Scroll inside one widget (a year list in a sheet) | `containerLocator.swipe({ direction })`: the swipe **starts at that element's center**, so the gesture hits the right list |
+| Scroll inside one widget (a year list in a sheet) | `itemLocator.swipe({ direction })` on any item of that list: the swipe **starts at the item's center**, so the gesture hits the right list |
 | Swipe the whole screen | `screen.swipe(direction)`: only for full-screen scrolling |
 
 `scrollIntoViewIfNeeded` swipes from the **screen center** and, if the
 element isn't in the tree yet (Flutter builds list items lazily), swipes in the
-default direction (`up`). For a list inside a sheet, prefer a scoped
-`containerLocator.swipe` loop with a max-attempts bound and a clear error. (The
-`DatePicker.scrollYears` "UNPROVEN screen-wide swipe" can use this.)
+default direction (`up`). For a list inside a sheet, use a scoped swipe loop
+with a max-attempts bound and a clear error. Captures don't include unlabeled
+list containers, so start the swipe from an item that only that list contains
+(real version: `DatePicker.scrollYears` swipes from `anyYearButton()`, a
+4-digit label that only the year list has).
 
 After a manual swipe, a fling animation may still move the list. Re-query in a
 loop (`isVisible()` then act), or, only in a component with no end signal, a
