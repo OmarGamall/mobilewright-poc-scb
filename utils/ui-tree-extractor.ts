@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ROLE_TYPE_MAP, bareTypeName } from '@mobilewright/core';
 import { ENV } from '../config/env';
+import { BUNDLE_IDS } from '../config/targets';
 
 /**
  * @fileoverview UI evidence extractor: captures the current screen of the connected
@@ -351,7 +352,7 @@ export function renderEvidence(
 
   const header = [
     `# UI Evidence — ${screenName}`,
-    `# Captured: ${new Date().toISOString()} · app ${app ? `${app.packageName} v${app.version ?? '?'}` : `${ENV.bundleId} (not verified)`} · ` +
+    `# Captured: ${new Date().toISOString()} · app ${app ? `${app.packageName} v${app.version ?? '?'}` : `${BUNDLE_IDS.android} (not verified)`} · ` +
       `device ${device.name}${device.model ? ` (${device.model})` : ''}, ${device.platform} ${device.version}, ${device.type} · ` +
       `screen ${device.screenSize.width}x${device.screenSize.height}`,
     '# Redacted: text typed into text fields. NOT redacted: labels, static text, and the screenshot (all may contain names/emails).',
@@ -384,7 +385,7 @@ export interface ExtractOptions {
  *   <slug>-raw.json      mobilecli's unfiltered dump (only with `raw: true`; otherwise an
  *                        older one for the same slug is removed)
  *
- * The app (ENV.bundleId) must be in the foreground on the target screen and state.
+ * The app (BUNDLE_IDS.android) must be in the foreground on the target screen and state.
  *
  * @param screenName - Slug naming the screen and its state, e.g. 'home', 'home-country-dropdown'.
  * @param options - Extra outputs; see {@link ExtractOptions}.
@@ -406,11 +407,11 @@ export function dumpUITree(screenName: string, options: ExtractOptions = {}): vo
   try {
     app = mobilecliData<ForegroundApp>(`apps foreground --device ${deviceId}`);
   } catch {
-    windowWarnings.push(`app: mobilecli could not determine the foreground app; check the screenshot shows ${ENV.bundleId}`);
+    windowWarnings.push(`app: mobilecli could not determine the foreground app; check the screenshot shows ${BUNDLE_IDS.android}`);
   }
-  if (app && app.packageName !== ENV.bundleId) {
+  if (app && app.packageName !== BUNDLE_IDS.android) {
     throw new Error(
-      `[ui-tree-extractor] foreground app is ${app.packageName}, expected ${ENV.bundleId}. ` +
+      `[ui-tree-extractor] foreground app is ${app.packageName}, expected ${BUNDLE_IDS.android}. ` +
       'Open the app on the target screen (and unlock the device), then retry.',
     );
   }
