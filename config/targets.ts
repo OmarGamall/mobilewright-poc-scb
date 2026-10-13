@@ -27,6 +27,6 @@ export type TargetName = keyof typeof TARGETS;
  * iOS is unknown yet: while it is undefined, the iOS targets are not defined as projects.
  */
 export const BUNDLE_IDS: Record<Platform, string | undefined> = {
-  android: 'com.example.scb_automation_app',
+  android: 'com.SCP.Not',
   ios: undefined,
 };
