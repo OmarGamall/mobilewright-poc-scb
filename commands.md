@@ -10,15 +10,38 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
 
 - **Run tests:**
   ```bash
-  # Run all tests in the project
-  npx mobilewright test
-  
-  # Run a specific test file
-  npx mobilewright test tests/home.spec.ts
-  
-  # Run tests whose title matches a regex (there is no -g short flag)
-  npx mobilewright test --grep "test title name"
+  # Pick a target (targets are defined in config/targets.ts)
+  npm test                          # = android-real
+  npm run test:android              # Android real device
+  npm run test:android-emulator     # Android emulator
+  npm run test:ios-sim              # iOS simulator (macOS only)
+  npm run test:ios                  # iOS real device (macOS only)
+
+  # Filters: put them after -- so npm passes them on (without it, npm swallows flags)
+  npm run test:android -- tests/home.spec.ts                # one file
+  npm run test:android -- tests/home.spec.ts:18             # one test, by file:line
+  npm run test:android -- --grep "Home Tests"               # describe block title
+  npm run test:android -- --grep "open the Profile screen"  # test title (regex)
+  npm run test:android -- --grep @smoke                     # tag
+  npm run test:android -- --grep-invert "Profile"           # everything except matches
+  npm run test:android -- --list                            # list only, no device needed
+
+  # Same thing with the CLI directly (always pass --project)
+  npx mobilewright test --project=android-emulator --grep "login"
   ```
+  *`--grep` matches the full title path (file › describe › test) plus tags; there is no
+  filter by function/class name, no `--tag` and no `-g` flag. Tag a test with
+  `test('title', { tag: '@smoke' }, async (...) => {...})`. Without `--project`, every
+  defined target runs. The iOS targets exist only once `BUNDLE_IDS.ios` is set in
+  `config/targets.ts`.*
+
+- **Static checks (no device needed):**
+  ```bash
+  npm run verify
+  ```
+  *Runs TypeScript (`tsc --noEmit`), then ESLint, then `scripts/check-conventions.mjs`, and
+  stops at the first stage that fails. Must pass before a change is done. What each check
+  means: [docs/static-analysis.md](docs/static-analysis.md).*
 
 - **Open the Mobilewright Inspector:**
   ```bash
@@ -55,7 +78,8 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
   ⚠️  Warnings:
      - keyboard: a text field is focused, so the soft keyboard may be open …
   ```
-  *Android only for now. The app (`BUNDLE_ID`) must be in the foreground.*
+  *Android only for now. Needs `DEVICE_ID` in `.env`; the Android app (`BUNDLE_IDS.android` in
+  `config/targets.ts`) must be in the foreground.*
 
 - **Dump UI Tree (raw, unfiltered — rarely needed directly):**
   ```bash
