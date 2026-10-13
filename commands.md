@@ -67,23 +67,8 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
 
 ## UI Tree Extraction — AI Prompt Examples
 
-When using the `mobilewright-ui-tree-extractor` agent skill, use these prompts:
-
-```
-# Build a new POM from scratch
-"Extract the UI tree for the Profile screen (needs login, then tap Profile tab)
-and build the ProfilePage POM."
-
-# Update locators after a UI change
-"The Home screen UI changed. Re-extract the tree and update HomePage.ts locators only."
-
-# You already have the tree — paste it directly
-"Here is my home-locators.yml: [paste content]. Build the HomePage POM from this."
-
-# Logic-only refactor — no extraction needed at all
-"Refactor HomePage.ts to combine inputUsername and selectCountry into a single
-fillForm(formData) composite method. No locator changes."
-```
+See [How to prompt the AI](docs/ai-integration.md#how-to-prompt-the-ai) in the AI
+integration guide.
 
 ---
 

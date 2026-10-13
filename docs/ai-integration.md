@@ -22,21 +22,30 @@ user's own statement (AGENTS.md §4).
 sequenceDiagram
     actor User
     participant Agent as AI agent
-    participant Device as Android device
+    participant Device as Mobile device
     participant Extractor as npm run extract
 
     User->>Agent: "Build a POM for the Profile screen"
-    Agent->>Agent: Capture for profile exists and is current?
-    Agent->>User: No. Steps: unlock, log in, tap Profile, close the keyboard
-    User->>Device: puts the app on the screen and state
-    User-->>Agent: "ready"
-    Agent->>Extractor: npm run extract -- profile
-    Extractor->>Device: device info, foreground app, UI dump, screenshot
-    Extractor-->>Agent: profile-locators.yml + profile.png (+ warnings)
-    Agent->>Agent: read evidence, resolve warnings (open PNG if needed)
-    Agent->>Agent: write POM (pom-builder skill), citing evidence per locator
-    Agent->>User: plan / diff; npm run verify; specs run (or "not run: no device")
+    Agent->>Agent: Capture for this screen and state exists and is current?
+    opt No capture, or a stale one
+        Agent->>User: Steps to reach the state + the exact command
+        User->>Device: unlock, open the app, reach the screen and state
+        User->>Extractor: npm run extract -- profile
+        Extractor->>Device: device info, foreground app, UI dump, screenshot
+        Extractor-->>User: profile-locators.yml + profile.png (+ warnings)
+        User-->>Agent: "done"
+    end
+    Agent->>Agent: read evidence: slug and state, warnings, PNG if needed
+    Agent->>User: plan citing the evidence for each locator
+    User-->>Agent: approves
+    Agent->>Agent: write POM (pom-builder skill)
+    Agent->>Agent: npm run verify, then the specs (or report them as not run)
+    Agent->>User: final report
 ```
+
+The agent picks the slug and gives you the exact command, so capture names stay
+consistent; it runs the command itself only when you ask. You can also capture
+several screens up front: the agent then only reads the files.
 
 The two skills involved:
 
@@ -49,7 +58,9 @@ The two skills involved:
 
 ## Capturing a screen
 
-Unlock the device, open the app on the target screen **and state**, then:
+You run the capture; when an agent needs one, it tells you the slug and the steps.
+Unlock the device, open the app on the target screen **and state**, close the
+keyboard (unless it is part of the state), then:
 
 ```bash
 npm run extract -- <slug>          # slug = screen + state, e.g. home, home-country-dropdown
@@ -60,7 +71,7 @@ npm run extract -- <slug> --raw    # also save mobilecli's unfiltered dump
 |---|---|---|
 | `<slug>-locators.yml` | always | **The evidence.** The only file agents read by default |
 | `<slug>.png` | always | Screenshot, to confirm the state (keyboard, dialogs, right data). **Not redacted** |
-| `<slug>-raw.json` | `--raw` only | Untouched dump, for debugging the extractor or the driver |
+| `<slug>-raw.json` | `--raw` only | Untouched dump, for debugging the extractor or the driver. A capture without `--raw` deletes an older one for the same slug |
 
 `.ui-evidence/` is **local to each machine and never committed**: on a fresh clone,
 capture the screens you need.
@@ -99,7 +110,7 @@ elements:
     at: 570,1480 84x84
   - role: button
     type: Button
-    label: "HOME_DATE_PICKER\nDate\n‎\nDatePicker icon"
+    label: "HOME_DATE_PICKER\nDate\n\u200e\nDatePicker icon"
     at: 168,1620 928x189
   - role: button
     type: Button
@@ -137,7 +148,9 @@ private getTab(tab: NavTab) {
 | Adds `role` from Mobilewright's own role table | The agent uses the exact role `getByRole` matches; `none` (e.g. `View`) means `getByRole` can't match it |
 | Adds `at` and `offscreen` / `zeroSize` flags | Shows what needs scrolling and what Mobilewright treats as invisible |
 | Redacts text typed into any text field | Typed data never lands in evidence or code |
-| Records app version, device and screen size | A stale capture (older app version) is visible |
+| Keeps text exactly as the device reports it (untrimmed) | Mobilewright matches text exactly, so what you see is what a locator must match |
+| Writes invisible characters as `\uXXXX` (e.g. `\u200e` in the date field's label) | They are real characters in the label; without the escape an exact name copied from the file fails |
+| Records app version, device and screen size | Shows where and on what the capture was made. Dev builds often keep one version (`v1.0.0` here), so the version alone does not prove a capture is current |
 
 ### Warnings
 
@@ -147,20 +160,20 @@ private getTab(tab: NavTab) {
 | `keyboard` | A text field is focused; the keyboard may be open (it never appears in the dump) and cover lower elements. Check the PNG |
 | `no-handle` | An interactive element has no label, text or identifier, so it can't be located reliably. Ask the app team for a Semantics label/identifier |
 | `offscreen` / `zero-size` | Needs scrolling / not visible to Mobilewright |
-| `overlay` / `windows` | Another window or a dialog is on screen; the capture may not match what a test sees |
+| `overlay` / `windows` | Another Android window (system dialog, another app) is on screen; the capture may not match what a test sees. Flutter's own dialogs, bottom sheets and dropdowns are **not** detected: they appear as a full-screen labelled View (e.g. `"Scrim"`, `"Dismiss"`), so check the PNG |
 | `no-identifiers` | The app sets no test ids on this screen, so `getByTestId` is unavailable |
 | `app: … could not determine` | mobilecli couldn't confirm the foreground app (an intermittent device issue); check the PNG |
 
 ---
 
-## When the AI captures, and when it doesn't
+## When the AI asks for a capture, and when it doesn't
 
-Captures when:
+Asks you to capture when:
 - it adds or changes a locator and no capture exists for that screen and state;
-- the capture is stale (older app version, the user says the screen changed, or a
-  passing test contradicts it).
+- the capture is stale (you say the screen changed, a passing test contradicts it,
+  or the header's app version differs from the installed one).
 
-Skips the capture when:
+Needs no capture when:
 1. it composes new methods from **existing** locators;
 2. it only refactors structure, signatures or logic;
 3. the user gives the locator, or pastes a capture, in the prompt.
