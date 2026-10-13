@@ -77,7 +77,7 @@ A real capture of the Home screen (trimmed):
 
 ```yaml
 # UI Evidence — home
-# Captured: 2026-10-12T23:30:59Z · app com.example.scb_automation_app v1.0.0 · device HONOR 400 (DNY-NX9), android 16, real · screen 1264x2736
+# Captured: 2026-10-13T00:18:44.307Z · app com.example.scb_automation_app v1.0.0 · device HONOR 400 (DNY-NX9), android 16, real · screen 1264x2736
 # Redacted: text typed into text fields. NOT redacted: labels, static text, and the screenshot (all may contain names/emails).
 # role: Mobilewright getByRole role ("none" = no role; use getByLabel / getByText). at: x,y widthxheight (px).
 # focused / checked / selected are listed only when true.
@@ -87,25 +87,26 @@ elements:
   - role: none
     type: View
     label: "LOGIN_INPUT_USERNAME"
-    at: 168,631 928x189
+    at: 168,1011 928x189
     children:
       - role: textfield
         type: EditText
-        text: "[REDACTED]"
-        focused: true
-        at: 224,722 816x70
+        at: 224,1102 816x70
   - role: checkbox
     type: CheckBox
     label: "HOME_CHECKBOX_TERMS"
     checked: true
-    at: 570,1100 84x84
+    at: 570,1480 84x84
+  - role: button
+    type: Button
+    label: "HOME_DATE_PICKER\nDate\n‎\nDatePicker icon"
+    at: 168,1620 928x189
   - role: button
     type: Button
     label: "Profile\nTab 2 of 3"
-    at: 421,2519 422x217
+    at: 421,2441 422x217
 
 warnings:
-  - "keyboard: a text field is focused, so the soft keyboard may be open (…): check the screenshot before trusting lower elements"
   - "no-identifiers: no app element has a test id here, so getByTestId cannot be used on this screen"
 ```
 
@@ -142,7 +143,7 @@ private getTab(tab: NavTab) {
 
 | Warning | Meaning |
 |---|---|
-| `duplicate …` | Two elements share a label/text. Mobilewright has no strict mode, so a locator on it silently uses the first. Scope by a container |
+| `duplicate "<value>": <locators>` | The listed locators match several elements with that value (counted the way Mobilewright matches: `getByText` falls back to the label, a `getByRole` name to the text). Mobilewright has no strict mode, so the locator silently uses the first. Scope by a container |
 | `keyboard` | A text field is focused; the keyboard may be open (it never appears in the dump) and cover lower elements. Check the PNG |
 | `no-handle` | An interactive element has no label, text or identifier, so it can't be located reliably. Ask the app team for a Semantics label/identifier |
 | `offscreen` / `zero-size` | Needs scrolling / not visible to Mobilewright |

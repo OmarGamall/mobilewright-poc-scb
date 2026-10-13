@@ -66,12 +66,14 @@ version and device (`real` / `emulator`).
 `getByLabel` / `getByText`, never `getByRole`), `label` / `text` / `identifier`
 (choose with pom-builder §3), `children` (chain from the labelled parent), `at`
 (`x,y widthxheight`), and `checked` / `selected` / `focused` only when true.
+A `\uXXXX` inside a label or text is a real invisible character (e.g. `‎`), not
+an empty line: keep it in an exact name, or match around it with an anchored regex.
 
 **Warnings → what to do:**
 
 | Warning | Do |
 |---|---|
-| `duplicate …` | Don't locate by that value alone; scope by a unique container (no strict mode: the first match wins) |
+| `duplicate "<value>": <locators>` | The listed locators (`getByLabel`, `getByText`, `getByRole('<role>')`) match several elements with that value; don't use them on it alone, scope by a unique container (no strict mode: the first match wins). A locator not listed is unique for that value |
 | `keyboard` | Open the PNG. If a keyboard covers elements you need, re-capture with it closed |
 | `no-handle` | The element can't be located reliably. Tell the user (the app team can add a Semantics label/identifier); don't fall back to position or `getByType` unless the user agrees |
 | `offscreen` | The POM must scroll to it first (pom-builder `references/sync-patterns.md` § Scrolling) |

@@ -101,7 +101,9 @@ function roleOf(type: string): string {
 /** "android.widget.EditText" → "EditText". */
 const shortType = (type: string): string => type.slice(type.lastIndexOf('.') + 1);
 
-const isAppIdentifier = (id: string | undefined): id is string =>
+const REDACTED = '[REDACTED]';
+
+const isAppIdentifier =(id: string | undefined): id is string =>
   Boolean(id) && !id!.startsWith('android:id/') && !id!.startsWith(SYSTEM_UI_PREFIX);
 
 // ============================================================================
@@ -165,7 +167,7 @@ function filterNode(node: RawNode, ctx: FilterContext, labelledAncestor: boolean
   const role = roleOf(node.type);
   const label = node.label || undefined;
   const rawText = node.text?.trim() || undefined;
-  const text = rawText && role === 'textfield' ? '[REDACTED]' : rawText;
+  const text = rawText && role === 'textfield' ? REDACTED : rawText;
   const identifier = isAppIdentifier(node.identifier) ? node.identifier : undefined;
   const placeholder = node.placeholder || undefined;
   // Typed text is redacted and changes with input, so it is never a handle for a text field.
@@ -215,14 +217,25 @@ function collectWarnings(nodes: EvidenceNode[], ctx: FilterContext, windowWarnin
   const warnings = [...windowWarnings];
 
   // Mobilewright has no strict mode: a locator matching several nodes silently uses the first.
-  const counts = new Map<string, number>();
+  // Count what each locator really matches (query-engine): getByLabel → label;
+  // getByText → text, else label; getByRole name → label, else text.
+  const counts = new Map<string, Map<string, number>>();
+  const count = (value: string | undefined, locator: string): void => {
+    if (!value || value === REDACTED) return;
+    const byLocator = counts.get(value) ?? new Map<string, number>();
+    byLocator.set(locator, (byLocator.get(locator) ?? 0) + 1);
+    counts.set(value, byLocator);
+  };
   for (const n of all) {
-    for (const key of [n.label && `label "${n.label}"`, n.text && n.text !== '[REDACTED]' && `text "${n.text}"`]) {
-      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
+    count(n.label, 'getByLabel');
+    count(n.text ?? n.label, 'getByText');
+    if (n.role !== 'none') count(n.label ?? n.text, `getByRole('${n.role}')`);
   }
-  for (const [key, count] of counts) {
-    if (count > 1) warnings.push(`duplicate ${key} ×${count}: a locator on it acts on the first match; scope by container`);
+  for (const [value, byLocator] of counts) {
+    const dups = [...byLocator].filter(([, c]) => c > 1).map(([locator, c]) => `${locator} ×${c}`);
+    if (dups.length) {
+      warnings.push(`duplicate ${q(value)}: ${dups.join(', ')}; a locator on it acts on the first match, so scope by container`);
+    }
   }
 
   if (all.some((n) => n.role === 'textfield' && n.focused)) {
@@ -248,7 +261,12 @@ function collectWarnings(nodes: EvidenceNode[], ctx: FilterContext, windowWarnin
 // YAML output
 // ============================================================================
 
-const q = (s: string): string => JSON.stringify(s);
+/** Double-quoted YAML string; invisible format characters (e.g. U+200E) are escaped so they show. */
+const q = (s: string): string =>
+  JSON.stringify(s).replace(/\p{Cf}/gu, (c) => {
+    const cp = c.codePointAt(0) ?? 0;
+    return cp > 0xffff ? `\\U${cp.toString(16).padStart(8, '0')}` : `\\u${cp.toString(16).padStart(4, '0')}`;
+  });
 
 function toYaml(nodes: EvidenceNode[], indent: number): string[] {
   const pad = '  '.repeat(indent);
@@ -362,7 +380,8 @@ export interface ExtractOptions {
  *
  *   <slug>-locators.yml  evidence for writing locators (always; the file agents read)
  *   <slug>.png           screenshot, to confirm the screen state (always)
- *   <slug>-raw.json      mobilecli's unfiltered dump (only with `raw: true`)
+ *   <slug>-raw.json      mobilecli's unfiltered dump (only with `raw: true`; otherwise an
+ *                        older one for the same slug is removed)
  *
  * The app (ENV.bundleId) must be in the foreground on the target screen and state.
  *
@@ -399,17 +418,21 @@ export function dumpUITree(screenName: string, options: ExtractOptions = {}): vo
   const rawDump = runMobilecli(`dump ui --device ${deviceId}`);
   const { yaml, warnings } = renderEvidence(screenName, rawDump, device, app, windowWarnings);
 
-  const ymlPath = path.join(OUTPUT_DIR, `${screenName}-locators.yml`);
-  fs.writeFileSync(ymlPath, yaml, 'utf-8');
-
+  // Screenshot before the YAML: if it fails, the previous YAML + PNG pair stays consistent.
   const pngPath = path.join(OUTPUT_DIR, `${screenName}.png`);
   runMobilecli(`screenshot --device ${deviceId} -o "${pngPath}"`);
 
+  const ymlPath = path.join(OUTPUT_DIR, `${screenName}-locators.yml`);
+  fs.writeFileSync(ymlPath, yaml, 'utf-8');
+
   const written = [ymlPath, pngPath];
+  const rawPath = path.join(OUTPUT_DIR, `${screenName}-raw.json`);
   if (options.raw) {
-    const rawPath = path.join(OUTPUT_DIR, `${screenName}-raw.json`);
     fs.writeFileSync(rawPath, rawDump, 'utf-8');
     written.push(rawPath);
+  } else {
+    // A raw dump from an earlier capture of this slug would no longer match the evidence.
+    fs.rmSync(rawPath, { force: true });
   }
 
   console.log(`\n✅ UI evidence saved for '${screenName}':\n${written.map((p) => `   ${p}`).join('\n')}`);
