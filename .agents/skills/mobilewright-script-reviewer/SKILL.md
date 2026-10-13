@@ -18,7 +18,8 @@ maintainability, false positives/negatives), and give the corrected version.
 
 1. Identify every `.spec.ts` file and any Page Object, Component, helper, or fixture files
    touched by the request.
-2. Walk each file against the checklist below, in order.
+2. Walk each file against the checklist below, in order. For a `.spec.ts`, also check it
+   against `.agents/skills/mobilewright-spec-writer/SKILL.md` (structure, data, assertions).
 3. Produce a report grouped by severity: **Blocking** (will cause flaky or false-positive/negative
    tests), **Should Fix** (maintainability/best practice), **Nit** (style).
 4. For each finding: file + line, the problematic snippet, why it matters, and the suggested fix.

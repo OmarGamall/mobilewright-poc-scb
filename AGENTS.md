@@ -95,7 +95,9 @@ Read only the rows that apply, once per task, before writing code:
 | Task | Read first |
 |---|---|
 | Create a POM/component/model, or add/change a method or locator (skip for T1) | `.agents/skills/mobilewright-pom-builder/SKILL.md` |
-| Write or change a spec, or add a fixture | `fixtures/index.ts` (fixture inventory; start state is logged in, opt out with `test.use({ loggedIn: false })`) and `docs/static-analysis.md` §2.4 |
+| Write or change a spec | `.agents/skills/mobilewright-spec-writer/SKILL.md` |
+| Automate a manual test case | `.agents/skills/mobilewright-testcase-automator/SKILL.md` |
+| Add or change a fixture | `fixtures/index.ts` (fixture inventory; start state is logged in, opt out with `test.use({ loggedIn: false })`) |
 | Need locator evidence | `.agents/skills/mobilewright-ui-tree-extractor/SKILL.md` |
 | Code review | `.agents/skills/mobilewright-script-reviewer/SKILL.md` |
 | Bug report for a failing test | `.agents/skills/mobilewright-bug-reporter/SKILL.md` |
