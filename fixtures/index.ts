@@ -26,6 +26,8 @@ import { mergeTests } from '@playwright/test';
 import { test as pagesTest } from './pages.fixture';
 import { test as authTest } from './auth.fixture';
 
+// authTest already extends pagesTest; the merge is the extension point for new
+// fixture files (and check-conventions requires every *.fixture.ts imported here).
 export const test = mergeTests(pagesTest, authTest);
 
 export { expect } from '@mobilewright/test';

@@ -96,6 +96,16 @@ and checks the Phase 3 screen before the test body runs. Tests that need the log
 test.use({ loggedIn: false });
 ```
 
+In a nutshell:
+
+- **Per test, through the UI.** This is not Playwright's `storageState`: the app is relaunched
+  for every test and has no login backdoor, so there is no session to save and reuse.
+- **Isolated but not free.** Every test starts clean, and each one pays for a full login inside
+  its own timeout.
+- **Assumes a cold start lands on Login.** The relaunch keeps app data; if the app ever
+  remembers the session, the fixture's login will fail.
+- **Clear failures.** A broken login fails in the `authenticate` fixture, before the test body.
+
 `data/` holds dummy test accounts only, because Mobilewright's report prints the text typed into
 fields, passwords included.
 

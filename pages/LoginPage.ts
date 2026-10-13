@@ -1,6 +1,6 @@
 import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
-import { dismissKeyboard } from '../helpers/keyboard';
+import { dismissKeyboard } from '@helpers/keyboard';
 import { step } from '../utils/step';
 
 /**
@@ -51,8 +51,8 @@ export class LoginPage {
   // ============================================================================
 
   /**
-   * Encapsulates the standard login action.
-   * Fills credentials, optionally unmasks password, verifies text inputs, and submits.
+   * Encapsulates the standard login action: fills credentials and submits.
+   * The caller verifies the destination screen.
    * @param username - The username to enter.
    * @param password - The password to enter.
    */
@@ -60,13 +60,6 @@ export class LoginPage {
   async login(username: string, password: string): Promise<void> {
     await this.getUsernameInput().fill(username);
     await this.getPasswordInput().fill(password);
-
-    // Optionally unmask the password before submitting, to verify it on UI
-    await this.unmaskPassword();
-
-    // Assert that the username and password are correct
-    await this.verifyUsernameText(username);
-    await this.verifyPasswordText(password);
 
     // Close the keyboard so it can't cover the submit button
     await dismissKeyboard(this.screen);
@@ -100,6 +93,14 @@ export class LoginPage {
   // ============================================================================
   // VERIFY METHODS
   // ============================================================================
+
+  /**
+   * Verifies that the Login screen is shown.
+   */
+  @step('Verify on Login screen')
+  async verifyOnLoginScreen(): Promise<void> {
+    await expect(this.getSubmitButton()).toBeVisible();
+  }
 
   /**
    * Returns whether the password field is currently masked (displays bullets).
