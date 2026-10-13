@@ -4,8 +4,10 @@ import { dismissKeyboard } from '@helpers/keyboard';
 import { step } from '../utils/step';
 
 /**
- * @fileoverview Page Object Model for the Login screen.
- * Handles user authentication, password masking toggle, and input validations.
+ * @fileoverview Page Object Model for the retail-staging Login screen.
+ * Labels are "<KEY>\n<visible text>"; the visible text follows the app language
+ * (English/Arabic switch), so every locator anchors on the key only.
+ * Evidence: .ui-evidence/login-locators.yml
  */
 export class LoginPage {
   constructor(private readonly screen: Screen) {}
@@ -14,36 +16,22 @@ export class LoginPage {
   // LOCATORS (private factory methods)
   // ============================================================================
 
-  /**
-   * @param value - Optional text the field must contain; Flutter exposes a textfield's
-   *   text as its accessible name.
-   */
-  private getUsernameInput(value?: string) {
+  /** Role-less View with a merged label: matched by getByText's label fallback. */
+  private getUsernameInput() {
     return this.screen
-      .getByLabel('LOGIN_INPUT_USERNAME')
-      .getByRole('textfield', value === undefined ? undefined : { name: value });
+      .getByText(/^USERNAME input field for username_field\n/)
+      .getByRole('textfield');
   }
 
-  /**
-   * @param value - Optional text (or pattern) the field must contain. A masked
-   *   field's accessible name is bullets (•).
-   */
-  private getPasswordInput(value?: string | RegExp) {
+  /** Role-less View with a merged label: matched by getByText's label fallback. */
+  private getPasswordInput() {
     return this.screen
-      .getByLabel('LOGIN_INPUT_PASSWORD')
-      .getByRole('textfield', value === undefined ? undefined : { name: value });
-  }
-
-  private getPasswordVisibilityToggle() {
-    return this.screen.getByLabel('Clear field button');
-  }
-
-  private getForgotPasswordButton() {
-    return this.screen.getByRole('button', { name: 'LOGIN_LINK_FORGOT_PASSWORD' });
+      .getByText(/^PASSWORD input field for password_field\n/)
+      .getByRole('textfield');
   }
 
   private getSubmitButton() {
-    return this.screen.getByRole('button', { name: 'LOGIN_BTN_SUBMIT' });
+    return this.screen.getByRole('button', { name: /^SUBMIT button for login\n/ });
   }
 
   // ============================================================================
@@ -51,8 +39,7 @@ export class LoginPage {
   // ============================================================================
 
   /**
-   * Encapsulates the standard login action: fills credentials and submits.
-   * The caller verifies the destination screen.
+   * Fills the credentials and submits. The caller verifies the destination screen.
    * @param username - The username to enter.
    * @param password - The password to enter.
    */
@@ -61,72 +48,30 @@ export class LoginPage {
     await this.getUsernameInput().fill(username);
     await this.getPasswordInput().fill(password);
 
-    // Close the keyboard so it can't cover the submit button
+    // The open keyboard covers the submit button
     await dismissKeyboard(this.screen);
 
-    // Tap the submit button
     await this.getSubmitButton().tap();
-  }
-
-  /**
-   * Masks the password field if it is currently unmasked.
-   */
-  @step('Mask password')
-  async maskPassword(): Promise<void> {
-    const isMasked = await this.isPasswordMasked();
-    if (!isMasked) {
-      await this.getPasswordVisibilityToggle().tap();
-    }
-  }
-
-  /**
-   * Unmasks the password field if it is currently masked.
-   */
-  @step('Unmask password')
-  async unmaskPassword(): Promise<void> {
-    const isMasked = await this.isPasswordMasked();
-    if (isMasked) {
-      await this.getPasswordVisibilityToggle().tap();
-    }
   }
 
   // ============================================================================
   // VERIFY METHODS
   // ============================================================================
 
-  /**
-   * Verifies that the Login screen is shown.
-   */
+  /** Verifies that the Login screen is shown. */
   @step('Verify on Login screen')
   async verifyOnLoginScreen(): Promise<void> {
     await expect(this.getSubmitButton()).toBeVisible();
   }
 
   /**
-   * Returns whether the password field is currently masked (displays bullets).
-   * @returns {Promise<boolean>} True if the field is masked.
+   * Verifies that the Login screen has closed (e.g. after a successful login).
+   * Call it only after acting on the Login screen, so the absence check can't
+   * pass before the screen has rendered.
    */
-  async isPasswordMasked(): Promise<boolean> {
-    return await this.getPasswordInput(/•/).isVisible();
-  }
-
-  /**
-   * Verifies that the username field contains the expected text.
-   * @param expectedUsername - The exact username string expected in the field.
-   */
-  @step('Verify username is "{0}"')
-  async verifyUsernameText(expectedUsername: string): Promise<void> {
-    await expect(this.getUsernameInput(expectedUsername)).toBeVisible();
-  }
-
-  /**
-   * Verifies that the password field contains the expected text.
-   * Note: Password field must be unmasked for this to match the literal string.
-   * @param expectedPassword - The exact password string expected in the field.
-   */
-  @step('Verify password text') // the password must never appear in the report
-  async verifyPasswordText(expectedPassword: string): Promise<void> {
-    await expect(this.getPasswordInput(expectedPassword)).toBeVisible();
+  @step('Verify Login screen is closed')
+  async verifyLoginScreenClosed(): Promise<void> {
+    await expect(this.getSubmitButton(), 'Login submit button is gone').toBeHidden();
   }
 
   // ============================================================================
