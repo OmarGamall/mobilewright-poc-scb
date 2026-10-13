@@ -1,6 +1,6 @@
 # Mobilewright Automation
 
-End-to-end UI automation for the **Flutter** app `com.example.scb_automation_app`, written in
+End-to-end UI automation for the **Flutter** app `com.SCP.Not` (retail-staging), written in
 TypeScript with [Mobilewright](https://mobilewright.dev) (a mobile test framework built on
 Playwright's test runner). One suite runs on four targets: Android real device, Android emulator,
 iOS simulator and iOS real device.
@@ -121,7 +121,7 @@ fields, passwords included.
 | `"…" is not a valid ZIP file` | `ANDROID_APP` / `IOS_APP` must point at an `.apk` / `.ipa`, not a folder such as `Runner.app` |
 | `--grep` (or another flag) seems ignored with `npm test` | Put flags after `--`: `npm test -- --grep "login"`. Without it, npm keeps the flag for itself |
 | `npm run extract` fails with `DEVICE_ID is not set` | Set `DEVICE_ID` in `.env` (the extractor needs it even with one device) |
-| `npm run extract` fails with `foreground app is …, expected …` | Open the app on the target screen and unlock the device, then retry |
+| `npm run extract` fails with `foreground app is …, expected …` | Open the app on the target screen and unlock the device, then retry. If the right app is open, `BUNDLE_IDS.android` doesn't match it (wrong branch?): see [App under test](#app-under-test-bundle-id) |
 | `npm run verify` crashes with syntax or engine errors | Node is too old. Upgrade (see step 1) and rerun `npm ci` |
 
 ---
@@ -142,6 +142,20 @@ and targets with no matching device wait for the allocation timeout before faili
 
 To add a target, add an entry to `TARGETS` in `config/targets.ts` and a matching script in
 `package.json`.
+
+### App under test (bundle ID)
+
+Each branch tests one app, set in `BUNDLE_IDS` in [`config/targets.ts`](./config/targets.ts)
+and committed with the branch (`poc1`: `com.example.scb_automation_app`, `retail-staging`:
+`com.SCP.Not`). Mobilewright launches that app, and `npm run extract` refuses to capture any
+other. To read the bundle ID of the app open on the phone:
+
+```bash
+adb shell dumpsys window | grep mCurrentFocus   # Windows PowerShell: findstr instead of grep
+# mCurrentFocus=Window{… com.SCP.Not/com.SCP.Not.MainActivity}  → bundle ID com.SCP.Not
+```
+
+Testing a new app means a new branch with its own `BUNDLE_IDS` (and its own Page Objects).
 
 ---
 
