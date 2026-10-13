@@ -1,39 +1,29 @@
 import { test } from '@fixtures';
+import { PHASE3_FORM } from '@data/home.data';
 
-test.describe('Home Page Features', () => {
-  
-  test('User can complete the entire Phase 3 form successfully', async ({ homePage }) => {
+test.describe('Home Tests', () => {
 
-    const username = 'omar_phase3';
-
-    // 1. Input username
-    await homePage.inputUsername(username);
-
-    // 2. Select a country
-    await homePage.selectCountry('Egypt');
-
-    // 3. Select a date
-    await homePage.selectDate({ year: 2026, month: 9, day: 15 });
-
-    // 4. Interact with terms checkbox
+  test('should keep the entered username and terms state when filling the Phase 3 form', async ({ homePage }) => {
+    // Act: Fill the Phase 3 form and accept the terms
+    await homePage.inputUsername(PHASE3_FORM.username);
+    await homePage.selectCountry(PHASE3_FORM.country);
+    await homePage.selectDate(PHASE3_FORM.date);
     await homePage.setTermsCheckboxState(true);
 
-    // 5. Verify the entered values stuck
-    await homePage.verifyUsername(username);
+    // Assert: The entered values stuck
+    await homePage.verifyUsername(PHASE3_FORM.username);
     await homePage.verifyTermsChecked(true);
   });
 
-  test('User can navigate to Profile tab from Home screen', async ({ homePage, profilePage }) => {
-
-    // 1. Verify we are on the Phase 3 home screen
+  test('should open the Profile screen when tapping the Profile tab', async ({ homePage, profilePage }) => {
+    // Arrange: Start on the Phase 3 home screen
     await homePage.verifyOnPhase3Screen();
 
-    // 2. Navigate to Profile tab via the bottom nav bar
+    // Act: Navigate to the Profile tab via the bottom nav bar
     await homePage.navigateTo('Profile');
 
-    // 3. Verify we actually landed on the Profile screen
+    // Assert: The Profile screen is shown
     await profilePage.verifyOnProfileScreen();
   });
 
 });
-
