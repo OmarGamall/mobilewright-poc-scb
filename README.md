@@ -210,6 +210,8 @@ Objects from real screen evidence instead of guessing. You put the device on a s
 | Skill | When the agent uses it |
 |---|---|
 | `mobilewright-pom-builder` | Create or change a Page Object or Component |
+| `mobilewright-spec-writer` | Write or change a spec, its test data or tags |
+| `mobilewright-testcase-automator` | Turn a manual test case (text, Excel/CSV, Gherkin, Jira/Xray/TestRail) into a spec |
 | `mobilewright-ui-tree-extractor` | Capture a screen as locator evidence |
 | `mobilewright-script-reviewer` | Review a spec, Page Object or Component |
 | `mobilewright-bug-reporter` | Write a bug report for a failed test |
@@ -223,34 +225,72 @@ Agent rules live in [`AGENTS.md`](AGENTS.md); skills in `.agents/skills/` (with 
 
 ```
 mobilewright/
-├── .agents/skills/        # AI agent skills (pom-builder, ui-tree-extractor, script-reviewer, bug-reporter)
-├── .claude/skills/        # Pointers to .agents/skills for Claude Code
-├── .ui-evidence/          # Screen captures from `npm run extract` (local only, git-ignored)
-├── bug-reports/           # Bug reports written by the AI (local only, git-ignored)
 │
-├── tests/                 # *.spec.ts only; specs call Page Object methods, never screen.*
-├── pages/                 # One Page Object per screen (LoginPage, HomePage, ProfilePage)
-├── components/            # Reusable widgets (BottomNavBar, Checkbox, DatePicker)
+├── .agents/skills/                       # AI agent skills (the source; one folder per skill)
+│   ├── mobilewright-pom-builder/         # Create or change a Page Object or Component
+│   │   ├── SKILL.md
+│   │   └── references/
+│   │       ├── locator-patterns.md       # Locator factories and label-matching patterns
+│   │       └── sync-patterns.md          # Waits: scrolling, pickers/sheets, keyboard, app relaunch
+│   ├── mobilewright-spec-writer/         # Rules for writing or changing a spec
+│   ├── mobilewright-testcase-automator/  # Manual test case → automated spec
+│   │   ├── SKILL.md
+│   │   └── references/
+│   │       ├── ddt-patterns.md           # Data-driven tests (scenario arrays in data/)
+│   │       └── input-formats.md          # Reading text, Excel/CSV, Gherkin, Jira/Xray/TestRail cases
+│   ├── mobilewright-ui-tree-extractor/   # Capture a screen as locator evidence (npm run extract)
+│   ├── mobilewright-script-reviewer/     # Review a spec, Page Object or Component
+│   └── mobilewright-bug-reporter/        # Bug report for a failed test
+├── .claude/skills/<name>/SKILL.md        # Pointers to .agents/skills (same frontmatter) for Claude Code
+│
+├── .ui-evidence/                         # Captures: <slug>-locators.yml + <slug>.png (local, git-ignored)
+├── bug-reports/                          # Bug reports written by the AI (local, git-ignored)
+├── test-results/                         # Raw run artifacts of the last run (git-ignored)
+├── mobilewright-report/                  # HTML report; open with `npx mobilewright show-report` (git-ignored)
+│
+├── tests/                                # *.spec.ts only; specs call Page Object methods, never screen.*
+│   ├── login.spec.ts                     # Login flow (opts out of the automatic login)
+│   └── home.spec.ts                      # Phase 3 form and Profile tab navigation
+├── pages/                                # One Page Object per screen
+│   ├── LoginPage.ts
+│   ├── HomePage.ts
+│   └── ProfilePage.ts
+├── components/                           # Reusable widgets, used by pages through private factories
+│   ├── BottomNavBar.ts                   # Bottom tab navigation
+│   ├── Checkbox.ts                       # Wraps a checkbox locator passed in by its page
+│   └── DatePicker.ts                     # Year / month / day picker
 ├── fixtures/
-│   ├── index.ts           # ← import { test, expect } from '@fixtures' in every spec
-│   ├── pages.fixture.ts   # Page Object fixtures
-│   └── auth.fixture.ts    # Logged-in start state (opt out with loggedIn: false)
-├── helpers/               # Cross-screen helpers (keyboard)
-├── models/                # TypeScript types
-├── data/                  # Test data (dummy accounts only)
+│   ├── index.ts                          # ← import { test, expect } from '@fixtures'; fixture inventory
+│   ├── pages.fixture.ts                  # Page Object fixtures
+│   └── auth.fixture.ts                   # Logged-in start state (opt out with loggedIn: false)
+├── helpers/
+│   └── keyboard.ts                       # dismissKeyboard(): closes the soft keyboard (sends ENTER)
+├── models/
+│   └── UserModel.ts                      # User type (username, password)
+├── data/                                 # Test data typed with models/ (dummy accounts only)
+│   ├── users.ts                          # Login accounts (StandardUser)
+│   └── home.data.ts                      # Phase 3 form values
 ├── config/
-│   ├── targets.ts         # Targets and bundle IDs (team-wide, committed)
-│   └── env.ts             # Machine settings read from .env
-├── utils/                 # Framework utilities (@step decorator, UI tree extractor)
-├── scripts/               # extract-ui.ts, check-conventions.mjs
-├── docs/                  # AI integration guide, static analysis reference
+│   ├── targets.ts                        # Targets and the app bundle ID (team-wide, committed per branch)
+│   └── env.ts                            # Machine settings read from .env (DEVICE_ID, ANDROID_APP, IOS_APP)
+├── utils/
+│   ├── step.ts                           # @step decorator: POM methods show as named report steps
+│   └── ui-tree-extractor.ts              # Dumps the screen via mobilecli, filters and redacts, writes evidence
+├── scripts/
+│   ├── extract-ui.ts                     # CLI behind `npm run extract -- <slug> [--raw]`
+│   └── check-conventions.mjs             # Repo convention checks, run by `npm run verify`
+├── docs/
+│   ├── ai-integration.md                 # UI evidence → POM generation guide
+│   └── static-analysis.md                # What `npm run verify` checks and how to fix each failure
 │
-├── AGENTS.md              # Rules for AI agents (the only agent instruction file)
-├── commands.md            # Commands cheatsheet
-├── .env.example           # Template for .env
-├── mobilewright.config.ts # Test runner config: projects, timeouts, reporters
-├── eslint.config.mjs      # Lint rules (see docs/static-analysis.md)
-└── tsconfig.json          # TypeScript config and path aliases (@fixtures, @pages, …)
+├── AGENTS.md                             # Rules for AI agents (the only agent instruction file)
+├── commands.md                           # Commands cheatsheet
+├── .env.example                          # Template for .env (copy it; never commit .env)
+├── .gitignore
+├── package.json                          # npm scripts (verify, test:*, extract) and dependencies
+├── mobilewright.config.ts                # Test runner config: one project per target, timeouts, reporters
+├── eslint.config.mjs                     # Lint rules (see docs/static-analysis.md)
+└── tsconfig.json                         # TypeScript config and path aliases (@fixtures, @pages, …)
 ```
 
 ---
