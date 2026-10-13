@@ -166,7 +166,8 @@ const formatRect = (r: Rect): string => `${r.x},${r.y} ${r.width}x${r.height}`;
 function filterNode(node: RawNode, ctx: FilterContext, labelledAncestor: boolean): EvidenceNode[] {
   const role = roleOf(node.type);
   const label = node.label || undefined;
-  const rawText = node.text?.trim() || undefined;
+  // Untrimmed, as Mobilewright matches it exactly; whitespace-only text is no handle.
+  const rawText = node.text?.trim() ? node.text : undefined;
   const text = rawText && role === 'textfield' ? REDACTED : rawText;
   const identifier = isAppIdentifier(node.identifier) ? node.identifier : undefined;
   const placeholder = node.placeholder || undefined;
