@@ -1,7 +1,7 @@
 import { test as base } from '@mobilewright/test';
-import { LoginPage } from '../pages/LoginPage';
-import { HomePage } from '../pages/HomePage';
-import { ProfilePage } from '../pages/ProfilePage';
+import { LoginPage } from '@pages/LoginPage';
+import { HomePage } from '@pages/HomePage';
+import { ProfilePage } from '@pages/ProfilePage';
 
 type PagesFixtures = {
   loginPage: LoginPage;

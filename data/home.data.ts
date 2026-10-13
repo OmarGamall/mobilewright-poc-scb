@@ -1,4 +1,4 @@
-import type { PickerDate } from '../components/DatePicker';
+import type { PickerDate } from '@components/DatePicker';
 
 /** Values typed into the Phase 3 form on the Home screen. */
 export interface Phase3FormData {

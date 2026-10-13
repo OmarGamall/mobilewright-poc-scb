@@ -1,6 +1,6 @@
 import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
-import { dismissKeyboard } from '../helpers/keyboard';
+import { dismissKeyboard } from '@helpers/keyboard';
 import { step } from '../utils/step';
 
 export type NavTab = 'Home' | 'Profile' | 'Menu';

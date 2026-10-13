@@ -1,6 +1,6 @@
 import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
-import { BottomNavBar, type NavTab } from '../components/BottomNavBar';
+import { BottomNavBar, type NavTab } from '@components/BottomNavBar';
 import { step } from '../utils/step';
 
 /**
