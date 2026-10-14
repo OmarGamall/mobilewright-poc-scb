@@ -87,10 +87,11 @@ Present the matrix before writing code:
 |---|---|---|---|---|
 | P | User is logged out | fixture | `test.use({ loggedIn: false })` | exists |
 | 1 | Enter username and password, tap Login | action | `loginPage.login(username, password)` | exists |
-| 1E | Phase 3 screen is shown | verify | `homePage.verifyOnPhase3Screen()` | exists |
-| 2 | Tap the Profile tab | action | `homePage.navigateTo('Profile')` | exists |
-| 2E | Profile screen is shown | verify | `profilePage.verifyOnProfileScreen()` | exists |
-| 3E | Selected country is shown | verify | none | **GAP** |
+| 1E | Biometric popup is offered | verify | `homePage.verifyBiometricPopupShown()` | exists |
+| 2 | Tap Later | action | `homePage.declineBiometric()` | exists |
+| 2E | Home greets the user | verify | `homePage.verifyOnHomeScreen(user.displayName)` | exists |
+| 3 | Tap the Transfers tab | action | `homePage.navigateTo('Transfers')` | exists |
+| 3E | Transfers screen is shown | verify | none | **GAP** |
 
 **Gaps:** a missing method or fixture is not a reason to drop the step or
 reach for `screen` in the spec. List each gap with the method signature you'd
@@ -151,7 +152,7 @@ via `test.fail()`, done criteria). On top of that, for a manual case:
   wants it kept, add it to the test details:
 
   ```typescript
-  test('should land on the Phase 3 screen when logging in with valid credentials', {
+  test('should land on the Home screen when logging in with valid credentials', {
     tag: '@TC-123',
     annotation: { type: 'testcase', description: 'TC-123' },
   }, async ({ loginPage, homePage }) => { … });

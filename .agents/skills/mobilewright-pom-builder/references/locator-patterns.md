@@ -9,12 +9,15 @@ not from the original.
 
 Flutter wraps an input in a labelled `View`; the `EditText` inside has no label
 of its own. Scope from the container. Evidence: `login-locators.yml`
-(`View "LOGIN_INPUT_USERNAME"` → child `EditText`).
+(`View "USERNAME input field for username_field\n<visible text>"` → child
+`EditText`). The visible text follows the app language, so anchor on the key
+part only. (Source: `LoginPage.getUsernameInput`.)
 
 ```typescript
+/** Role-less View with a merged label: matched by getByText's label fallback. */
 private getUsernameInput() {
   return this.screen
-    .getByLabel('LOGIN_INPUT_USERNAME')
+    .getByText(/^USERNAME input field for username_field\n/)
     .getByRole('textfield');
 }
 ```
@@ -25,14 +28,15 @@ a value: `.getByRole('textfield', { name: expected })` (see
 
 ## 2. Typed-key factory (one of a fixed set)
 
-The key is a union type, so a typo fails at compile time and three tabs don't
-become three methods. Evidence: `home-locators.yml`
-(`Button "Home\nTab 1 of 3"`, `"Profile\nTab 2 of 3"`, `"Menu\nTab 3 of 3"`).
+The key is a union type, so a typo fails at compile time and four tabs don't
+become three methods. Evidence: `home1-locators.yml`
+(`Button "Home\nTab 1 of 4"`, `"Transfers\nTab 2 of 4"`, `"Products\nTab 3 of 4"`,
+`"More\nTab 4 of 4"`).
 
 ```typescript
-export type NavTab = 'Home' | 'Profile' | 'Menu';
+export type NavTab = 'Home' | 'Transfers' | 'Products' | 'More';
 
-/** Tab labels are "<Name>\nTab N of 3": anchor on the name. */
+/** Tab labels are "<Name>\nTab N of 4": anchor on the name. */
 private getTab(tab: NavTab) {
   return this.screen.getByRole('button', { name: new RegExp(`^${tab}\\n`) });
 }

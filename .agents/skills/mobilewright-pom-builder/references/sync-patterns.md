@@ -31,7 +31,7 @@ async login(username: string, password: string): Promise<void> {
   // … fill + dismissKeyboard + tap submit …
 }
 // The caller (spec or the auth fixture) asserts the destination:
-await homePage.verifyOnPhase3Screen();
+await homePage.verifyOnHomeScreen(StandardUser.displayName);
 ```
 
 If the *same* method acts again after the transition and could still hit the

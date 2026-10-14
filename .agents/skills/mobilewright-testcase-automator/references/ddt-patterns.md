@@ -29,9 +29,11 @@ export type NavTabScenario = {
   tab: NavTab;
 };
 
-/** Tabs the Phase 3 screen must navigate to. Source: TC-310. */
+/** Tabs the Home screen must navigate to. Source: TC-310. */
 export const navTabScenarios = [
-  { desc: 'the Profile tab', tab: 'Profile' },
+  { desc: 'the Transfers tab', tab: 'Transfers' },
+  { desc: 'the Products tab', tab: 'Products' },
+  { desc: 'the More tab', tab: 'More' },
 ] as const satisfies readonly NavTabScenario[];
 ```
 

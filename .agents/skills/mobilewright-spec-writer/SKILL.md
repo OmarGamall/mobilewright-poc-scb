@@ -23,9 +23,9 @@ guessed data or several behaviors in one test. Those are on you.
 ## 0. Inventory first (search, don't assume)
 
 - **Layout:** read a neighbouring spec in `tests/` and match it. Reference:
-  `tests/home.spec.ts`.
+  `tests/login.spec.ts`.
 - **Fixtures:** inventory table in `fixtures/index.ts`. Every test starts
-  **logged in** on the Phase 3 screen (auto fixture `authenticate`); a spec that
+  **logged in** on the Home screen (auto fixture `authenticate`); a spec that
   needs the login screen opts out with `test.use({ loggedIn: false })`.
 - **POM methods:** `grep -rn "async <verb>" pages/ components/`, then read the
   signature: params, return value, and whether it already verifies.
@@ -67,7 +67,7 @@ A missing fixture is also a gap: name it in the plan and ask.
 | Value is… | Source |
 |---|---|
 | A login account | `data/users.ts` (dummy accounts only: the report prints typed text, passwords included) |
-| Fixed input for a feature | typed constant in `data/<feature>.data.ts` (`PHASE3_FORM`) |
+| Fixed input for a feature | typed constant in `data/<feature>.data.ts` (`<FEATURE>_DATA`) |
 | A variant under test | typed scenario array in `data/<feature>.data.ts`, looped **outside** `test()` (see `.agents/skills/mobilewright-testcase-automator/references/ddt-patterns.md`) |
 | Must be unique per run (anything the app stores and could collide) | generated per run (AGENTS.md §5). No generator exists yet: put one in the plan, don't inline `Date.now()` in the spec |
 | Expected messages, labels, computed values | existing constant, or evidence: the manual case or the user. Never what a capture happened to show |

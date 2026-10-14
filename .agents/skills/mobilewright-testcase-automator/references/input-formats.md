@@ -52,7 +52,7 @@ Two common layouts. Find out which one you have before parsing:
 
 - Don't introduce a Cucumber/BDD layer; the output is a normal spec.
 - A `Then` that is really an action ("Then the user taps OK") is an action; a
-  `Given` that does things through the UI ("Given I open the Profile tab")
+  `Given` that does things through the UI ("Given I open the Transfers tab")
   belongs in Arrange.
 
 ## Jira / Xray / Azure DevOps / TestRail

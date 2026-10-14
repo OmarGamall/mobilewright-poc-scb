@@ -216,7 +216,7 @@ visible, enabled and stable. Decide for **every** action with a side effect:
    closing overlay.
 3. Does it change screen? → return after the tap; **the caller verifies the
    destination** with that screen's POM (`login()` then
-   `homePage.verifyOnPhase3Screen()`). A POM never waits on another screen's
+   `homePage.verifyOnHomeScreen(user.displayName)`). A POM never waits on another screen's
    locator. If a later call in the *same* method could still hit the old screen,
    wait for this screen's own anchor to be hidden.
 4. Is the target off-screen in a scrollable list? → `scrollIntoViewIfNeeded()`
