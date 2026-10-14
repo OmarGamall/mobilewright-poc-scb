@@ -6,6 +6,8 @@
 export interface User {
   /** Login username */
   username: string;
-  /** Login password */
+  /** Login password (dummy test accounts only) */
   password: string;
+  /** Name the Home header greets the user with ("Hi, <displayName>"); unknown until captured */
+  displayName?: string;
 }
