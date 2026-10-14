@@ -23,3 +23,24 @@ export const StagingUsers = [
 
 /** Default account for the auto-login fixture and login.spec.ts. */
 export const StandardUser = StagingUsers[1];
+
+/** A login attempt the app must reject; `desc` names the case in test titles. */
+type InvalidCredentials = User & { desc: string };
+
+/**
+ * Credentials the app must reject (negative login tests).
+ * wrongPassword uses a non-default account on purpose: repeated failed logins
+ * can lock an account, and a locked StandardUser breaks every test's auto-login.
+ */
+export const InvalidUserData = {
+  wrongPassword: {
+    desc: 'a valid username and a wrong password',
+    username: StagingUsers[9].username,
+    password: 'Wrong@1234',
+  },
+  nonExistingUsername: {
+    desc: 'a non-existing username',
+    username: 'nonexistent_user_000',
+    password: STAGING_PASSWORD,
+  },
+} as const satisfies Record<string, InvalidCredentials>;
