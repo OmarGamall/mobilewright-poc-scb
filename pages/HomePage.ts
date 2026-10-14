@@ -1,15 +1,18 @@
 import type { Screen } from '@mobilewright/core';
-import { DatePicker, type PickerDate } from '@components/DatePicker';
-import { Checkbox } from '@components/Checkbox';
-import { BottomNavBar, type NavTab } from '@components/BottomNavBar';
-import { dismissKeyboard } from '@helpers/keyboard';
-import { step } from '../utils/step';
 import { expect } from '@mobilewright/test';
+import { BottomNavBar, type NavTab } from '@components/BottomNavBar';
+import { EnableBiometricPopup } from '@components/EnableBiometricPopup';
+import { step } from '../utils/step';
+
+export type QuickAction = 'Transfer' | 'Donate' | 'Open CD' | 'Ex. Rate';
 
 /**
- * @fileoverview Page Object Model for the Home screen.
- * Handles the Phase 3 home screen form including text inputs, country selection,
- * checkboxes, date pickers, and bottom navigation.
+ * @fileoverview Page Object Model for the retail-staging Home screen (first viewport:
+ * header greeting, quick actions, bottom nav). Content below the fold (balance,
+ * events, accounts) is not covered yet.
+ * The app gives this screen no test ids or semantic keys: every locator matches
+ * English copy and breaks if the app runs in Arabic.
+ * Evidence: .ui-evidence/home1-locators.yml
  */
 export class HomePage {
   constructor(private readonly screen: Screen) {}
@@ -18,92 +21,105 @@ export class HomePage {
   // LOCATORS (private factory methods)
   // ============================================================================
 
-  private getPhase3Label() {
-    return this.screen.getByLabel('Phase 3');
+  /** Exact label: the account cards' merged labels ("Avatar\nCurrent Account…") don't match. */
+  private getAvatar() {
+    return this.screen.getByLabel('Avatar');
+  }
+
+  private getGreeting() {
+    return this.screen.getByLabel('Hi,');
+  }
+
+  /** @param displayName - The user's name, shown in its own View next to "Hi,". */
+  private getUserName(displayName: string) {
+    return this.screen.getByLabel(displayName);
   }
 
   /**
-   * @param value - Optional text the field must contain; Flutter exposes a textfield's
-   *   text as its accessible name (same pattern as LoginPage.verifyUsernameText).
+   * Every View on screen, in document order. The header's "Avatar", "Hi," and
+   * name are sibling Views with no container or id, so the name is only
+   * reachable by its position after "Hi,".
    */
-  private getUsernameInput(value?: string) {
-    return this.screen
-      .getByLabel('LOGIN_INPUT_USERNAME')
-      .getByRole('textfield', value === undefined ? undefined : { name: value });
+  private getViews() {
+    // Full native class: the capture's `type: View` is shortened from android.view.View.
+    return this.screen.getByType('android.view.View');
   }
 
-  private getCountryDropdown() {
-    return this.screen.getByRole('button', { name: 'HOME_DROPDOWN_COUNTRY' });
+  /** Role-less View with a merged label: matched by getByText's label fallback. */
+  private getQuickActionsSection() {
+    return this.screen.getByText(/^Quick actions\n/);
   }
 
-  private getCountryOption(country: string) {
-    return this.screen.getByRole('button', { name: country });
-  }
-
-  private getTermsCheckbox() {
-    return new Checkbox(this.screen.getByRole('checkbox', { name: 'HOME_CHECKBOX_TERMS' }));
-  }
-
-  private getDatePickerButton() {
-    return this.screen.getByRole('button', { name: /HOME_DATE_PICKER/ });
+  /**
+   * Quick action tiles are a mix of View and ImageView, so they share no role;
+   * match the label inside the section.
+   * @param action - The tile to locate.
+   */
+  private getQuickAction(action: QuickAction) {
+    return this.getQuickActionsSection().getByLabel(action);
   }
 
   private navBar() {
     return new BottomNavBar(this.screen);
   }
 
+  private biometricPopup() {
+    return new EnableBiometricPopup(this.screen);
+  }
+
   // ============================================================================
   // ACTIONS
   // ============================================================================
 
-  // Tier 1 — Composite actions
-
   /**
-   * Fills the username field and closes the keyboard.
-   * @param username - The username to enter.
+   * Opens a quick action. The caller verifies the destination screen.
+   * @param action - The quick action tile to tap.
    */
-  @step('Input username "{0}"')
-  async inputUsername(username: string): Promise<void> {
-    await this.getUsernameInput().fill(username);
-    await dismissKeyboard(this.screen);
+  @step('Open quick action "{0}"')
+  async openQuickAction(action: QuickAction): Promise<void> {
+    await this.getQuickAction(action).tap();
   }
 
   /**
-   * Opens the country dropdown and selects a specific country by its display name.
-   * @param country - The exact visible country name as shown in the dropdown.
+   * Taps a bottom navigation tab. The caller verifies the destination screen.
+   * @param tab - The tab to navigate to.
    */
-  @step('Select country "{0}"')
-  async selectCountry(country: string): Promise<void> {
-    await this.getCountryDropdown().tap();
-    await this.getCountryOption(country).tap();
-  }
-
-  /**
-   * Sets the terms checkbox to the desired checked state.
-   * @param check - True to check the box, false to uncheck.
-   */
-  @step('Set terms checkbox state to {0}')
-  async setTermsCheckboxState(check: boolean): Promise<void> {
-    await this.getTermsCheckbox().setState(check);
-  }
-
-  /**
-   * Opens the Date Picker and selects a specific date.
-   * @param date - The PickerDate object (year, month, day) to select.
-   */
-  @step('Select date {0.year}-{0.month}-{0.day}')
-  async selectDate(date: PickerDate): Promise<void> {
-    await this.getDatePickerButton().tap();
-    await new DatePicker(this.screen).pick(date);
-  }
-
-  /**
-   * Taps the specified bottom navigation tab to navigate to it.
-   * Delegates to the shared BottomNavBar component.
-   * @param tab - The tab to navigate to ('Home', 'Profile', or 'Menu').
-   */
+  @step('Navigate to tab "{0}"')
   async navigateTo(tab: NavTab): Promise<void> {
     await this.navBar().navigateTo(tab);
+  }
+
+  /**
+   * Accepts biometric login in the post-login popup. The app then opens the
+   * Terms and Conditions screen; the caller verifies it.
+   */
+  @step('Enable biometric login')
+  async enableBiometric(): Promise<void> {
+    await this.biometricPopup().enable();
+  }
+
+  /** Declines biometric login ("Later") in the post-login popup and waits for it to close. */
+  @step('Decline biometric login')
+  async declineBiometric(): Promise<void> {
+    await this.biometricPopup().decline();
+  }
+
+  /**
+   * Reads the name the Home header greets the user with: the View right after
+   * "Hi,". Positional and fragile; used only to capture unknown display names.
+   * @returns The displayed name.
+   */
+  async getDisplayName(): Promise<string> {
+    await this.getGreeting().waitFor({ state: 'visible' });
+    const views = await this.getViews().all();
+    for (const [index, view] of views.entries()) {
+      if ((await view.getText()) === 'Hi,') {
+        const nameView = views[index + 1];
+        if (!nameView) break;
+        return nameView.getText();
+      }
+    }
+    throw new Error('Home header: no View found after the "Hi," greeting');
   }
 
   // ============================================================================
@@ -111,40 +127,19 @@ export class HomePage {
   // ============================================================================
 
   /**
-   * Verifies that the user has successfully reached the Phase 3 home screen.
+   * Verifies that the Home screen is shown and its header greets the user.
+   * @param displayName - The name the header is expected to show.
    */
-  @step('Verify on Phase 3 screen')
-  async verifyOnPhase3Screen(): Promise<void> {
-    await expect(this.getPhase3Label()).toBeVisible();
+  @step('Verify on Home screen greeting "{0}"')
+  async verifyOnHomeScreen(displayName: string): Promise<void> {
+    await expect(this.getGreeting(), 'Home header shows the "Hi," greeting').toBeVisible();
+    await expect.soft(this.getAvatar(), 'Home header shows the avatar').toBeVisible();
+    await expect.soft(this.getUserName(displayName), 'Home header shows the user name').toBeVisible();
   }
 
-  /**
-   * Verifies that the username field contains the expected text.
-   * @param username - The exact username expected in the field.
-   */
-  @step('Verify username is "{0}"')
-  async verifyUsername(username: string): Promise<void> {
-    await expect(this.getUsernameInput(username)).toBeVisible();
+  /** Verifies that the post-login "Enable Biometric" popup is shown. */
+  @step('Verify biometric popup is shown')
+  async verifyBiometricPopupShown(): Promise<void> {
+    await this.biometricPopup().verifyShown();
   }
-
-  /**
-   * Verifies the terms checkbox is in the expected checked state.
-   * @param checked - True if the terms checkbox should be checked, false if unchecked.
-   */
-  @step('Verify terms checkbox checked state is {0}')
-  async verifyTermsChecked(checked: boolean): Promise<void> {
-    await this.getTermsCheckbox().verifyChecked(checked);
-  }
-
-  /**
-   * Verifies that the specified bottom nav tab is visible.
-   * @param tab - The tab expected to be visible in the nav bar.
-   */
-  async verifyNavTabVisible(tab: NavTab): Promise<void> {
-    await this.navBar().verifyTabVisible(tab);
-  }
-
-  // ============================================================================
-  // PRIVATE HELPERS
-  // ============================================================================
 }
