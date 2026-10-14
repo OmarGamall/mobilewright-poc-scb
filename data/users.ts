@@ -22,4 +22,4 @@ export const StagingUsers = [
 ] as const satisfies readonly User[];
 
 /** Default account for the auto-login fixture and login.spec.ts. */
-export const StandardUser = StagingUsers[0];
+export const StandardUser = StagingUsers[1];
