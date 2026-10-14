@@ -25,14 +25,14 @@ sequenceDiagram
     participant Device as Mobile device
     participant Extractor as npm run extract
 
-    User->>Agent: "Build a POM for the Profile screen"
+    User->>Agent: "Build a POM for the Transfers screen"
     Agent->>Agent: Capture for this screen and state exists and is current?
     opt No capture, or a stale one
         Agent->>User: Steps to reach the state + the exact command
         User->>Device: unlock, open the app, reach the screen and state
-        User->>Extractor: npm run extract -- profile
+        User->>Extractor: npm run extract -- transfers
         Extractor->>Device: device info, foreground app, UI dump, screenshot
-        Extractor-->>User: profile-locators.yml + profile.png (+ warnings)
+        Extractor-->>User: transfers-locators.yml + transfers.png (+ warnings)
         User-->>Agent: "done"
     end
     Agent->>Agent: read evidence: slug and state, warnings, PNG if needed
@@ -87,8 +87,8 @@ the same code path but haven't been verified yet).
 A real capture of the Home screen (trimmed):
 
 ```yaml
-# UI Evidence — home
-# Captured: 2026-10-13T00:18:44.307Z · app com.example.scb_automation_app v1.0.0 · device HONOR 400 (DNY-NX9), android 16, real · screen 1264x2736
+# UI Evidence — home1
+# Captured: 2026-10-13T13:43:53.070Z · app com.SCP.Not v23.2.2 · device HONOR 400 (DNY-NX9), android 16, real · screen 1264x2736
 # Redacted: text typed into text fields. NOT redacted: labels, static text, and the screenshot (all may contain names/emails).
 # role: Mobilewright getByRole role ("none" = no role; use getByLabel / getByText). at: x,y widthxheight (px).
 # focused / checked / selected are listed only when true.
@@ -97,25 +97,29 @@ A real capture of the Home screen (trimmed):
 elements:
   - role: none
     type: View
-    label: "LOGIN_INPUT_USERNAME"
-    at: 168,1011 928x189
+    label: "Avatar"
+    at: 56,180 144x144
+  - role: none
+    type: View
+    label: "Hi,"
+    at: 228,217 66x70
+  - role: none
+    type: View
+    label: "Quick actions\nAccounts\nCertificates\nTime Deposits\nRecent Transfers\nNo recent transfer\nOffers"
+    at: 0,1258 1264x1113
     children:
-      - role: textfield
-        type: EditText
-        at: 224,1102 816x70
-  - role: checkbox
-    type: CheckBox
-    label: "HOME_CHECKBOX_TERMS"
-    checked: true
-    at: 570,1480 84x84
+      - role: none
+        type: View
+        label: "Transfer"
+        at: 56,1398 204x263
+      - role: image
+        type: ImageView
+        label: "Donate"
+        at: 372,1398 204x263
   - role: button
     type: Button
-    label: "HOME_DATE_PICKER\nDate\n\u200e\nDatePicker icon"
-    at: 168,1620 928x189
-  - role: button
-    type: Button
-    label: "Profile\nTab 2 of 3"
-    at: 421,2441 422x217
+    label: "Transfers\nTab 2 of 4"
+    at: 365,2413 267x196
 
 warnings:
   - "no-identifiers: no app element has a test id here, so getByTestId cannot be used on this screen"
@@ -124,14 +128,14 @@ warnings:
 From this, the agent writes:
 
 ```typescript
-// role none + labelled parent with a textfield child → chain
-private getUsernameInput() {
-  return this.screen.getByLabel('LOGIN_INPUT_USERNAME').getByRole('textfield');
+// role none + unique exact label ("Avatar\n…" account cards don't match an exact label)
+private getAvatar() {
+  return this.screen.getByLabel('Avatar');
 }
 
-// role checkbox + unique label
-private getTermsCheckbox() {
-  return this.screen.getByRole('checkbox', { name: 'HOME_CHECKBOX_TERMS' });
+// tiles mix View and ImageView (no shared role) → label, scoped to the merged section
+private getQuickAction(action: QuickAction) {
+  return this.screen.getByText(/^Quick actions\n/).getByLabel(action);
 }
 
 // multi-line label → anchored regex on the fixed part
@@ -149,8 +153,8 @@ private getTab(tab: NavTab) {
 | Adds `at` and `offscreen` / `zeroSize` flags | Shows what needs scrolling and what Mobilewright treats as invisible |
 | Redacts text typed into any text field | Typed data never lands in evidence or code |
 | Keeps text exactly as the device reports it (untrimmed) | Mobilewright matches text exactly, so what you see is what a locator must match |
-| Writes invisible characters as `\uXXXX` (e.g. `\u200e` in the date field's label) | They are real characters in the label; without the escape an exact name copied from the file fails |
-| Records app version, device and screen size | Shows where and on what the capture was made. Dev builds often keep one version (`v1.0.0` here), so the version alone does not prove a capture is current |
+| Writes invisible characters as `\uXXXX` (e.g. `\u200e`) | They are real characters in the label; without the escape an exact name copied from the file fails |
+| Records app version, device and screen size | Shows where and on what the capture was made. Dev builds often keep one version across builds, so the version alone does not prove a capture is current |
 
 ### Warnings
 
@@ -184,13 +188,13 @@ Needs no capture when:
 
 Give the **intent**, the **screen**, and how to **reach the state**:
 
-> *"Build a POM for the Profile Edit screen. Log in, tap the Profile tab, then tap Edit.
-> Capture it and build `ProfileEditPage`."*
+> *"Build a POM for the Transfers screen. Log in, decline the biometric popup, then tap
+> the Transfers tab. Capture it and build `TransfersPage`."*
 
 > *"The Home screen was redesigned. Re-capture it and update the locators in
 > `HomePage.ts`. No logic changes."*
 
-> *"Here is `home-locators.yml`: [paste]. Build the `HomePage` POM from this."*
+> *"Here is `home1-locators.yml`: [paste]. Build the `HomePage` POM from this."*
 
-> *"Refactor `HomePage.ts` to combine `inputUsername` and `selectCountry` into
-> `fillPhase3Form(formData)`. No locator changes."* (no capture needed)
+> *"Rename `HomePage.openQuickAction` to `startQuickAction` and update its callers.
+> No locator changes."* (no capture needed)

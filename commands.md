@@ -18,9 +18,9 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
   npm run test:ios                  # iOS real device (macOS only)
 
   # Filters: put them after -- so npm passes them on (without it, npm swallows flags)
-  npm run test:android -- tests/home.spec.ts                # one file
-  npm run test:android -- tests/home.spec.ts:18             # one test, by file:line
-  npm run test:android -- --grep "Home Tests"               # describe block title
+  npm run test:android -- tests/login.spec.ts               # one file
+  npm run test:android -- tests/login.spec.ts:8             # one test, by file:line
+  npm run test:android -- --grep "Login Tests"              # describe block title
   npm run test:android -- --grep "open the Profile screen"  # test title (regex)
   npm run test:android -- --grep @smoke                     # tag
   npm run test:android -- --grep-invert "Profile"           # everything except matches

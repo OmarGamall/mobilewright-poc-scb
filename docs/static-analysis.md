@@ -94,7 +94,7 @@ Baseline: `eslint:recommended` + `typescript-eslint` recommended, plus:
 
 | Rule | Fails on | Why |
 |---|---|---|
-| `@typescript-eslint/no-floating-promises` | `homePage.selectCountry('Egypt')` without `await` | The test moves on before the tap happens: the classic flaky mobile test, or a false pass if the missing `await` is on an assertion |
+| `@typescript-eslint/no-floating-promises` | `homePage.openQuickAction('Transfer')` without `await` | The test moves on before the tap happens: the classic flaky mobile test, or a false pass if the missing `await` is on an assertion |
 | `@typescript-eslint/no-misused-promises` | An `async` function passed where a sync callback is expected | The promise is silently dropped, same effect as above |
 | `@typescript-eslint/await-thenable` | `await` on something that isn't a promise | Usually means you called the wrong method |
 | `@typescript-eslint/require-await` | An `async` function that never awaits | Either an `await` is missing, or `async` is misleading |

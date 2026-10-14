@@ -89,8 +89,9 @@ Once all three pass, run the full suite with `npm test`, or another target with
 ### How login works
 
 Every test starts **logged in** as `StandardUser` (from [`data/users.ts`](./data/users.ts)): the
-auto fixture `authenticate` in [`fixtures/auth.fixture.ts`](./fixtures/auth.fixture.ts) logs in
-and checks the Phase 3 screen before the test body runs. Tests that need the login screen opt out:
+auto fixture `authenticate` in [`fixtures/auth.fixture.ts`](./fixtures/auth.fixture.ts) logs in,
+declines the "Enable Biometric" popup and checks the Home screen greeting before the test body
+runs. Tests that need the login screen opt out:
 
 ```ts
 test.use({ loggedIn: false });
@@ -186,9 +187,9 @@ Testing a new app means a new branch with its own `BUNDLE_IDS` (and its own Page
 Arguments after `--` are passed on to Mobilewright:
 
 ```bash
-npm test -- tests/home.spec.ts                  # one file
-npm test -- tests/home.spec.ts:18               # one test, by file:line
-npm test -- --grep "Home Tests"                 # describe block or test title (regex)
+npm test -- tests/login.spec.ts                 # one file
+npm test -- tests/login.spec.ts:8               # one test, by file:line
+npm test -- --grep "Login Tests"                # describe block or test title (regex)
 npm test -- --grep @smoke                       # tag
 npm test -- --list                              # list the tests, no device needed
 ```
