@@ -10,19 +10,18 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
 
 - **Run tests:**
   ```bash
-  # Pick a target (targets are defined in config/targets.ts)
+  # Pick a target (the projects in mobilewright.config.ts; setup, DEVICE_ID and APKs:
+  # README › Configuration)
   npm test                          # = android-real
   npm run test:android              # Android real device
   npm run test:android-emulator     # Android emulator
-  npm run test:ios-sim              # iOS simulator (macOS only)
-  npm run test:ios                  # iOS real device (macOS only)
 
   # Filters: put them after -- so npm passes them on (without it, npm swallows flags)
   npm run test:android -- tests/login.spec.ts               # one file
   npm run test:android -- tests/login.spec.ts:8             # one test, by file:line
   npm run test:android -- --grep "Login Tests"              # describe block title
   npm run test:android -- --grep "open the Profile screen"  # test title (regex)
-  npm run test:android -- --grep @smoke                     # tag
+  npm run test:android -- --grep @negative                  # tag
   npm run test:android -- --grep-invert "Profile"           # everything except matches
   npm run test:android -- --list                            # list only, no device needed
 
@@ -32,8 +31,7 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
   *`--grep` matches the full title path (file › describe › test) plus tags; there is no
   filter by function/class name, no `--tag` and no `-g` flag. Tag a test with
   `test('title', { tag: '@smoke' }, async (...) => {...})`. Without `--project`, every
-  defined target runs. The iOS targets exist only once `BUNDLE_IDS.ios` is set in
-  `config/targets.ts`.*
+  defined target runs.*
 
 - **Static checks (no device needed):**
   ```bash
@@ -78,8 +76,8 @@ Mobilewright is an end-to-end testing framework for mobile (similar to Playwrigh
   ⚠️  Warnings:
      - keyboard: a text field is focused, so the soft keyboard may be open …
   ```
-  *Android only for now. Needs `DEVICE_ID` in `.env`; the Android app (`BUNDLE_IDS.android` in
-  `config/targets.ts`) must be in the foreground.*
+  *Android only for now. Needs `DEVICE_ID` in `.env`; the app (`bundleId` in
+  `mobilewright.config.ts`) must be in the foreground.*
 
 - **Dump UI Tree (raw, unfiltered — rarely needed directly):**
   ```bash
@@ -112,7 +110,7 @@ ADB is a versatile command-line tool that lets you communicate with an Android d
 
 - **Uninstall an app:**
   ```bash
-  adb uninstall com.example.package
+  adb uninstall <bundle-id>
   ```
   *Tip: Use `-k` to keep the data and cache directories around.*
 
@@ -144,12 +142,12 @@ ADB is a versatile command-line tool that lets you communicate with an Android d
 
 - **Start an app via shell:**
   ```bash
-  adb shell am start -n com.example.package/.MainActivity
+  adb shell am start -n <bundle-id>/.MainActivity
   ```
 
 - **Clear app data:**
   ```bash
-  adb shell pm clear com.example.package
+  adb shell pm clear <bundle-id>
   ```
 
 - **Fetch the DOM / UI Hierarchy of the screen (XML format):**

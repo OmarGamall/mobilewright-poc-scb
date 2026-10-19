@@ -33,8 +33,8 @@ even if the answer is "no issue found."
 ### 1. Locator strategy
 - Flag any `screen.*` call made **directly inside a spec file** — all screen interactions must
   go through Page Object or Component methods.
-- Flag locators that use `getByPlaceholder` or `getByTestId` — these are not available in
-  Mobilewright; replace with `getByLabel` or `getByRole`.
+- Flag locators that don't follow the locator priority in `mobilewright-pom-builder` §3
+  (e.g. `getByText` on visible copy when the capture shows a label or identifier).
 - Flag locators that are **class fields** (`private readonly someLocator: Locator`) —
   mobile POMs must use **private factory methods** to avoid stale references.
 - Flag duplicated locator definitions across multiple POM/Component files.
@@ -52,10 +52,11 @@ even if the answer is "no issue found."
 - Flag `waitForResponse` / `waitForURL` — these do not exist in Mobilewright.
 
 ### 3. Assertions
-- Flag tests with **zero assertions or `waitFor` calls** — a test that only performs actions
-  without verifying any outcome is not testing anything.
+- Flag tests with **zero assertions** — a test that only performs actions without verifying
+  any outcome is not testing anything. A `waitFor` call is a wait, not an assertion.
 - Flag verification methods that check text via `.getText()` and then assert on the string
-  snapshot — prefer `waitFor({ state: 'visible' })` on a locator that encodes the expected state.
+  snapshot — prefer an auto-retrying `expect(locator)` matcher (`toHaveText`, `toBeVisible`, …)
+  on a locator that encodes the expected state.
 - Flag single mega-assertions at the end of a long flow instead of verifying state at each
   meaningful step (harder to debug on failure).
 
@@ -64,7 +65,7 @@ even if the answer is "no issue found."
   a POM or Component method.
 - Flag Page Objects that expose raw locators as public getters instead of semantic action methods.
 - Flag one POM class covering multiple unrelated screens ("god object").
-- Flag Component classes that should be in `components/` but are placed in `pages/`.
+- Flag Component classes that should be in `pages/components/` but sit directly in `pages/`.
 
 ### 5. Mobile interaction correctness
 - Flag `.click()` calls — **all mobile interactions must use `.tap()`**.

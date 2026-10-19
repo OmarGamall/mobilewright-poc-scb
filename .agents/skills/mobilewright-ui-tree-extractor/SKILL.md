@@ -32,7 +32,7 @@ none exist. That means "capture it", not "no evidence".
 1. Ask which **screen**, how to **reach** it (login? which tab?), and which **state**
    (dropdown open, value selected, dialog shown, error visible). Never guess navigation.
 2. Name the slug **screen + state**, lowercase-hyphen: `home`,
-   `home-country-dropdown`, `login-error-empty-password`. One capture per state.
+   `enable-biometric-popup`, `login-error-empty-password`. One capture per state.
 3. Give the user exact steps: unlock the device and keep the screen on; open the app;
    navigate; set the state; **close the keyboard** unless the keyboard state is the
    target; then run the command below with your slug. Wait for "done".
@@ -100,4 +100,4 @@ Then write locators with `mobilewright-pom-builder`, citing
 ## Limits (today)
 
 Android real devices only, verified on one device. Emulators: same code path, not yet
-verified. iOS: refused until the configs support more platforms.
+verified. iOS: refused; the project is Android-only.

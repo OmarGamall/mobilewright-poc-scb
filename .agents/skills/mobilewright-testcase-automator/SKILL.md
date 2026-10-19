@@ -77,7 +77,7 @@ Y, tap Login") usually collapse into one domain action
 
 For each step, find the real fixture / POM method by searching: fixture names
 in the `fixtures/index.ts` inventory table; methods in `pages/` and
-`components/` (`grep -rn "async <verb>" pages/ components/`); data in `data/`.
+`pages/components/` (`grep -rn "async <verb>" pages/`); data in `data/`.
 Read the method signature before relying on it: parameter types, what it
 returns, whether it already verifies.
 

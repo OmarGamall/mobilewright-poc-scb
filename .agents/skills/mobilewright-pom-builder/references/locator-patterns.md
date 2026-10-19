@@ -1,8 +1,8 @@
 # Locator patterns
 
 Load this when writing a locator factory or matching a label with a pattern.
-Examples come from this repo and name their evidence. Where the repo code has a
-flaw, the example here is the corrected version and says so: copy from here,
+Examples come from this repo and name their evidence, unless marked
+*Illustrative*. Where the repo code has a flaw, the example here is the corrected version and says so: copy from here,
 not from the original.
 
 ## 1. Chained from a labelled container
@@ -23,8 +23,7 @@ private getUsernameInput() {
 ```
 
 A textfield's accessible name is its current text, so the same chain can assert
-a value: `.getByRole('textfield', { name: expected })` (see
-`HomePage.verifyUsername`).
+a value: `.getByRole('textfield', { name: expected })`.
 
 ## 2. Typed-key factory (one of a fixed set)
 
@@ -48,22 +47,24 @@ future `"Home settings"` tab would also match. (Source: `BottomNavBar.getTab`.)
 
 ## 3. Runtime-data factory (identity comes from test data)
 
-Use a plain string: `getByRole` `name` strings match exactly, so `India` can't
-match `British Indian Ocean Territory`. Evidence: `home-country-dropdown-locators.yml`
-(`Button "Egypt"`, `Button "India"`).
+Use a plain string: `getByLabel` and `getByRole` `name` strings match exactly,
+so `ALI` can't match `ALIA`. Evidence: `home1-locators.yml` (the header's
+display name is its own `View`, next to `View "Hi,"`). The expected name comes
+from test data (`displayName` in `data/users.ts`). (Source: `HomePage.getUserName`.)
 
 ```typescript
-private getCountryOption(country: string) {
-  return this.screen.getByRole('button', { name: country });
+/** @param displayName - The user's name, shown in its own View next to "Hi,". */
+private getUserName(displayName: string) {
+  return this.screen.getByLabel(displayName);
 }
 ```
 
 ## 4. Label with a known format
 
 When the label wraps data in a fixed format, escape the data and anchor both
-ends. Evidence: `DatePicker.dayButton`, exercised by the passing Phase 3 form
-test: date cells read `"28, Monday, September 28, 2026"`, sometimes with a
-suffix such as `", Today"`.
+ends. Source: `DatePicker.dayButton` (a POC component; no current spec
+exercises it): date cells read `"28, Monday, September 28, 2026"`, sometimes
+with a suffix such as `", Today"`.
 
 ```typescript
 private dayButton({ year, month, day }: PickerDate) {
@@ -86,15 +87,17 @@ prove there is never a suffix (hence `(,|$)` above).
 ## 5. Wrapping a passed-in locator (component)
 
 A component that wraps one widget takes the host locator from its page, so the
-page keeps ownership of the evidence-backed locator.
+page keeps ownership of the evidence-backed locator. Illustrative (no current
+POM uses this; `pages/components/Checkbox.ts` is real, the page side and its label
+are not):
 
 ```typescript
-// HomePage
-private getTermsCheckbox() {
-  return new Checkbox(this.screen.getByRole('checkbox', { name: 'HOME_CHECKBOX_TERMS' }));
+// SomePage
+private getConsentCheckbox() {
+  return new Checkbox(this.screen.getByRole('checkbox', { name: '<label from the capture>' }));
 }
 
-// components/Checkbox.ts
+// pages/components/Checkbox.ts
 import type { Locator } from '@mobilewright/core';
 
 export class Checkbox {
@@ -106,38 +109,43 @@ export class Checkbox {
 
 Flutter often merges a card's texts into one `View` label. `View` maps to no
 role and `getByLabel` takes no regex, so anchor `getByText` on the card's
-fixed heading (`getByText`/`getText` fall back to the label), then assert a
-field with an escaped, anchored regex. Evidence: `profile-locators.yml`
-(`View "User Profile\nUsername:\n<name>\nEmail:\n<email>"`).
+fixed heading (`getByText`/`getText` fall back to the label). Evidence:
+`login-miss-username-pass-locators.yml`
+(`View "alert\nMissing Information\nPlease enter both your username and password to log in."`).
+(Source: `MissingInformationAlert.getAlert`.)
 
 ```typescript
-private getUserProfileCard() {
-  return this.screen.getByText(/^User Profile\n/);
-}
-
-@step('Verify profile shows username "{0}"')
-async verifyUsername(username: string): Promise<void> {
-  await expect(this.getUserProfileCard(), 'profile card shows the username')
-    .toHaveText(new RegExp(`\\nUsername:\\n${escapeRegExp(username)}(\\n|$)`));
+/** Role-less View with a merged label: matched by getByText's label fallback. */
+private getAlert() {
+  return this.screen.getByText(/^alert\nMissing Information\n/);
 }
 ```
 
-The `(\n|$)` end anchor stops `omar` from matching `omar_phase3`. The expected
-username comes from the spec (test data), not from the capture.
+To assert a data field inside such a label, use an escaped, anchored regex.
+Illustrative (no current POM does this; the card and field names are made up):
+
+```typescript
+await expect(this.getCard(), 'card shows the username')
+  .toHaveText(new RegExp(`\nUsername:\n${escapeRegExp(username)}(\n|$)`));
+```
+
+The `(\n|$)` end anchor stops `omar` from matching `omar_2`. The expected
+value comes from the spec (test data), not from the capture.
 
 ## 7. Overlay anchor for a close wait
 
-An open dropdown or sheet often adds a node that exists only while it is open:
-wait for that node to be hidden before returning. Evidence:
-`home-country-dropdown-locators.yml` has `View "Dismiss"` (the barrier behind
-the open list); `home-locators.yml` (list closed) has none.
+A dialog, sheet or dropdown has a node that exists only while it is open:
+after the closing tap, wait for that node to be hidden before returning, so the
+caller's next tap can't land on the closing overlay. Evidence:
+`enable-biometric-popup-locators.yml` (`View "Enable Biometric"`, the popup
+title). (Source: `EnableBiometricPopup.decline`; `InvalidCredentialsDialog.cancel`
+does the same with its message.)
 
 ```typescript
-private getDropdownBarrier() {
-  return this.screen.getByLabel('Dismiss');
+async decline(): Promise<void> {
+  await this.getLaterButton().tap();
+  await this.getTitle().waitFor({ state: 'hidden' });
 }
-// after tapping an option:
-await this.getDropdownBarrier().waitFor({ state: 'hidden' });
 ```
 
 ## Don't
@@ -145,7 +153,7 @@ await this.getDropdownBarrier().waitFor({ state: 'hidden' });
 | Don't | Why | Do |
 |---|---|---|
 | `getByLabel('HOME_DATE', { exact: false })` | case-insensitive substring: also matches `HOME_DATE_PICKER` and `HOME_DATE_RANGE` | the full label, or an anchored regex on `getByRole` |
-| `new RegExp(country)` with test data | `(`, `+`, `.` break it; unanchored = partial match | a plain string (§3), or escape + anchor (§4) |
+| `new RegExp(name)` with test data | `(`, `+`, `.` break it; unanchored = partial match | a plain string (§3), or escape + anchor (§4) |
 | `getByText('Submit')` when a label exists | breaks on translation or copy edits | `getByLabel` / `getByRole` with the label |
 | `getByType('android.widget.Button')` | Android-only class name, matches every button | `getByRole('button', { name })` |
 | `.first()` "to be safe" | hides ambiguity; Mobilewright already picks the first match silently | a unique label, or chain from a unique container |

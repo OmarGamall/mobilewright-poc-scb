@@ -1,9 +1,10 @@
 # Mobilewright Automation
 
-End-to-end UI automation for the **Flutter** app `com.SCP.Not` (retail-staging), written in
-TypeScript with [Mobilewright](https://mobilewright.dev) (a mobile test framework built on
-Playwright's test runner). One suite runs on four targets: Android real device, Android emulator,
-iOS simulator and iOS real device.
+End-to-end UI automation for a **Flutter** Android app, written in TypeScript with
+[Mobilewright](https://mobilewright.dev) (a mobile test framework built on Playwright's test
+runner). The app under test is the `bundleId` in
+[`mobilewright.config.ts`](./mobilewright.config.ts). One suite runs on two targets: an Android
+real device and an Android emulator.
 
 ---
 
@@ -18,7 +19,6 @@ iOS simulator and iOS real device.
 | JDK | any recent | Android | `npx mobilewright doctor` warns if `JAVA_HOME` is not set |
 | Android SDK platform-tools (`adb`) | any recent | Android | On `PATH`, with `ANDROID_HOME` set. Comes with [Android Studio](https://developer.android.com/studio) |
 | Android Emulator (SDK Manager → SDK Tools) | any recent | `android-emulator` only | Plus at least one virtual device (AVD) |
-| macOS with Xcode | any recent | iOS only | iOS targets cannot run on Windows or Linux |
 | [VS Code](https://code.visualstudio.com/) *(optional)* | any | editing | **ESLint** extension (`dbaeumer.vscode-eslint`) shows rule violations while you type |
 
 `mobilecli`, the tool Mobilewright uses to talk to devices, is installed by `npm ci`; no global
@@ -37,40 +37,17 @@ npm ci
 
 ### 3. Prepare a device
 
-Pick the target you will run on (see [Targets](#targets)) and get one matching device ready:
+Pick the [target](#targets) you will run on and get one matching device ready:
 
 | Target | Before running |
 |---|---|
 | `android-real` | Enable **USB debugging** on the phone (Settings → Developer options), connect it by USB, accept the "Allow USB debugging" prompt, and check it is listed as `device` in `adb devices` |
-| `android-emulator` | Start an emulator from Android Studio's Device Manager; check it is listed in `adb devices` |
-| `ios-simulator` / `ios-real` | On a Mac only. These targets appear once `BUNDLE_IDS.ios` is set in [`config/targets.ts`](./config/targets.ts) |
+| `android-emulator` | Start an emulator from Android Studio's Device Manager (or `emulator -avd <avd-name>`); check it is listed in `adb devices` |
 
-The app must be on the device: install the build yourself (Android: `adb install <path-to.apk>`),
-or set `ANDROID_APP` / `IOS_APP` in `.env` and every run installs it first (step 4).
+The app must be on the device, or given as an `.apk` to install first: see
+[The app and APK files](#the-app-and-apk-files).
 
-### 4. Configure your machine (`.env`, optional)
-
-`.env` holds settings for **this machine only** and is never committed. Every variable is
-optional: with one device connected and the app already installed, you can skip this step.
-
-```bash
-# Windows
-copy .env.example .env
-
-# Mac / Linux
-cp .env.example .env
-```
-
-| Variable | Purpose | If unset |
-|---|---|---|
-| `DEVICE_ID` | Pin one device when several are connected (serial from `adb devices`, or simulator UDID). **Required by `npm run extract`** | Mobilewright uses the first device matching the target |
-| `ANDROID_APP` | Path to an `.apk` installed before the run on Android targets | The app must already be installed |
-| `IOS_APP` | Path to an `.ipa` installed before the run on iOS targets | The app must already be installed |
-
-Targets and bundle IDs are the same for the whole team, so they live in
-[`config/targets.ts`](./config/targets.ts), not in `.env`.
-
-### 5. Check your setup
+### 4. Check your setup
 
 ```bash
 # Device, SDK and tool checks, with a fix command for each warning
@@ -83,10 +60,135 @@ npm run verify
 npm test -- tests/login.spec.ts
 ```
 
-Once all three pass, run the full suite with `npm test`, or another target with
-`npm run test:<target>` (see [npm scripts](#npm-scripts)).
+Once all three pass, run the full suite (see [Running tests](#running-tests)). With one device
+connected and the app installed, no configuration is needed; the next section explains when it is.
 
-### How login works
+---
+
+## Configuration
+
+### Where each setting lives
+
+| Setting | Lives in | Committed | Who changes it |
+|---|---|---|---|
+| App under test (`bundleId`) | [`mobilewright.config.ts`](./mobilewright.config.ts) | yes | Once per branch (each branch tests one app) |
+| Targets (`projects`) | [`mobilewright.config.ts`](./mobilewright.config.ts) | yes | When the team adds a target |
+| Timeouts, reporter | [`mobilewright.config.ts`](./mobilewright.config.ts) | yes | Rarely, with review |
+| Which device to use (`DEVICE_ID`) | `.env` on your machine; job variables on CI | **no** | Each contributor, per machine |
+| Which build to install (`ANDROID_APP`) | `.env` on your machine; job variables on CI | **no** | Each contributor, per machine |
+
+`.env` is optional and never committed. Create it from the template when you need one of its
+variables:
+
+```bash
+copy .env.example .env    # Windows
+cp .env.example .env      # Mac / Linux
+```
+
+| Variable | Set it when | If unset |
+|---|---|---|
+| `DEVICE_ID` | Two or more devices **of the same type** are connected (e.g. two emulators), or you run `npm run extract`. Value: the serial from `adb devices`, e.g. `<device-serial>` or `emulator-5554` | Mobilewright uses the first connected device matching the target's `deviceType` |
+| `ANDROID_APP` | You want a build installed before the run. Value: a **local** `.apk` path, e.g. `./build/app.apk` | The app already installed on the device is used |
+
+> ⚠️ `DEVICE_ID` applies to **every** target. If it pins your phone and you run the emulator
+> target, no device matches and the run waits for the allocation timeout. Comment it out when
+> switching device type.
+
+### Targets
+
+Each target is one entry in `projects` in [`mobilewright.config.ts`](./mobilewright.config.ts).
+It picks a device by `deviceType`; `DEVICE_ID` narrows it to one device.
+
+| Target | Script | Runs on |
+|---|---|---|
+| `android-real` | `npm test` or `npm run test:android` | Android phone over USB |
+| `android-emulator` | `npm run test:android-emulator` | A running Android emulator |
+
+To add a target, add a project and a matching script in `package.json`:
+
+```ts
+// mobilewright.config.ts → projects
+{ name: 'android-tablet', use: { platform: 'android', deviceType: 'real', deviceName: /Tab/ } },
+```
+
+iOS is not set up: it needs its own bundle ID, project and Page Object support.
+
+### Running tests
+
+```bash
+npm test                          # android-real (phone over USB)
+npm run test:android-emulator     # android-emulator (emulator must be running)
+
+# Or the CLI directly; always pass --project
+npx mobilewright test --project=android-emulator
+```
+
+Always pick a target: `npx mobilewright test` **without** `--project` runs every target, and a
+target with no matching device waits for the allocation timeout before failing.
+
+Run part of the suite by adding arguments after `--`:
+
+```bash
+npm test -- tests/login.spec.ts                 # one file
+npm test -- tests/login.spec.ts:8               # one test, by file:line
+npm test -- --grep "Login Tests"                # describe block or test title (regex)
+npm test -- --grep @negative                    # tag
+npm test -- --list                              # list the tests, no device needed
+```
+
+More filters are in the [Commands Cheatsheet](commands.md).
+
+### The app and APK files
+
+The app is always **launched** by `bundleId`. `ANDROID_APP` only decides whether a build is
+**installed** first:
+
+| Situation | `ANDROID_APP` | What happens |
+|---|---|---|
+| App already installed on the phone or emulator | unset | Nothing is installed; the installed app is launched |
+| Test a specific local build | `./build/app.apk` | The `.apk` is installed, then launched |
+| CI | path of the `.apk` downloaded by an earlier step | Same as above |
+
+`ANDROID_APP` must be the path of an existing local `.apk`. Mobilewright cannot install from a
+URL, a folder or an `.aab`.
+
+#### APK from a URL (CI)
+
+When the build server publishes the APK over HTTP, download it before the tests and point
+`ANDROID_APP` at the file. Any CI system works the same way:
+
+```bash
+# 1. Download the build (APK_URL comes from the CI job; keep it a secret if it carries a token)
+mkdir -p build
+curl -fsSL "$APK_URL" -o build/app.apk
+
+# 2. Run the tests on the target the CI machine provides
+ANDROID_APP=build/app.apk npx mobilewright test --project=android-emulator
+```
+
+- `build/` is git-ignored.
+- The CI machine needs a running emulator (or a connected phone for `android-real`) before
+  step 2; Mobilewright does not start one.
+- Most CI systems set `CI`; the config then fails the run if a `test.only` was committed.
+- A large APK may need `installTimeout` raised (default 60 s) in the config's `use`.
+
+### App under test (bundle ID)
+
+Each branch tests one app, set as `bundleId` in
+[`mobilewright.config.ts`](./mobilewright.config.ts) and committed with the branch. Mobilewright
+launches that app, and `npm run extract` refuses to capture any other. To read the bundle ID of
+the app open on the phone:
+
+```bash
+adb shell dumpsys window | grep mCurrentFocus   # Windows PowerShell: findstr instead of grep
+# mCurrentFocus=Window{… <bundle-id>/<bundle-id>.MainActivity}  → bundle ID <bundle-id>
+```
+
+Testing a new app means a new branch with its own `bundleId` (and its own Page Objects).
+
+---
+
+## How Login Works
 
 Every test starts **logged in** as `StandardUser` (from [`data/users.ts`](./data/users.ts)): the
 auto fixture `authenticate` in [`fixtures/auth.fixture.ts`](./fixtures/auth.fixture.ts) logs in,
@@ -110,53 +212,20 @@ In a nutshell:
 `data/` holds dummy test accounts only, because Mobilewright's report prints the text typed into
 fields, passwords included.
 
-### Troubleshooting
+---
+
+## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | `[mobilewright] warning: could not verify "…" reached foreground — proceeding anyway` | Known mobilecli issue on some Android devices; harmless when the tests pass |
 | The first step fails with `LocatorError: Locator: no matching element found` | Often the phone is locked or the screen went off. Unlock it, and consider "Stay awake" (Developer options) while charging. Check the attached view tree to see what was on screen |
-| A test hangs for a long time, then fails with `device allocation timed out` | No connected device matches the target (e.g. `test:android-emulator` with no emulator running, or `DEVICE_ID` pointing at another device). Start the right device or fix `DEVICE_ID`. The wait is `allocationTimeout`, 15 minutes by default |
-| `Project(s) "ios-simulator" not found` | The iOS targets are not defined until `BUNDLE_IDS.ios` is set in `config/targets.ts` |
-| `[config/env] ANDROID_APP="…" does not exist` | Fix the path in `.env`, or remove the line if the app is already installed |
-| `"…" is not a valid ZIP file` | `ANDROID_APP` / `IOS_APP` must point at an `.apk` / `.ipa`, not a folder such as `Runner.app` |
+| A test hangs for a long time, then fails with `device allocation timed out` | No connected device matches the target: no emulator running for `android-emulator`, or `DEVICE_ID` pins a device of the other type (e.g. your phone while running the emulator target). Start the right device or comment out `DEVICE_ID`. The wait is `allocationTimeout`, 15 minutes by default |
+| `"…" is not a valid ZIP file` or `Android requires a .apk file` | `ANDROID_APP` must be the path of an existing local `.apk` (not a URL or a folder). Fix the path, or unset it if the app is already installed |
 | `--grep` (or another flag) seems ignored with `npm test` | Put flags after `--`: `npm test -- --grep "login"`. Without it, npm keeps the flag for itself |
 | `npm run extract` fails with `DEVICE_ID is not set` | Set `DEVICE_ID` in `.env` (the extractor needs it even with one device) |
-| `npm run extract` fails with `foreground app is …, expected …` | Open the app on the target screen and unlock the device, then retry. If the right app is open, `BUNDLE_IDS.android` doesn't match it (wrong branch?): see [App under test](#app-under-test-bundle-id) |
+| `npm run extract` fails with `foreground app is …, expected …` | Open the app on the target screen and unlock the device, then retry. If the right app is open, `bundleId` in `mobilewright.config.ts` doesn't match it (wrong branch?): see [App under test](#app-under-test-bundle-id) |
 | `npm run verify` crashes with syntax or engine errors | Node is too old. Upgrade (see step 1) and rerun `npm ci` |
-
----
-
-## Targets
-
-Defined in [`config/targets.ts`](./config/targets.ts); each target is one Mobilewright project.
-
-| Target | Script | Runs on |
-|---|---|---|
-| `android-real` | `npm test` or `npm run test:android` | Android phone over USB |
-| `android-emulator` | `npm run test:android-emulator` | Android emulator |
-| `ios-simulator` | `npm run test:ios-sim` | iOS simulator (macOS only) |
-| `ios-real` | `npm run test:ios` | iPhone (macOS only) |
-
-Always pick a target: `npx mobilewright test` **without** `--project` runs every defined target,
-and targets with no matching device wait for the allocation timeout before failing.
-
-To add a target, add an entry to `TARGETS` in `config/targets.ts` and a matching script in
-`package.json`.
-
-### App under test (bundle ID)
-
-Each branch tests one app, set in `BUNDLE_IDS` in [`config/targets.ts`](./config/targets.ts)
-and committed with the branch (`poc1`: `com.example.scb_automation_app`, `retail-staging`:
-`com.SCP.Not`). Mobilewright launches that app, and `npm run extract` refuses to capture any
-other. To read the bundle ID of the app open on the phone:
-
-```bash
-adb shell dumpsys window | grep mCurrentFocus   # Windows PowerShell: findstr instead of grep
-# mCurrentFocus=Window{… com.SCP.Not/com.SCP.Not.MainActivity}  → bundle ID com.SCP.Not
-```
-
-Testing a new app means a new branch with its own `BUNDLE_IDS` (and its own Page Objects).
 
 ---
 
@@ -165,36 +234,13 @@ Testing a new app means a new branch with its own `BUNDLE_IDS` (and its own Page
 > 💡 The full command list (Inspector, report, mobilecli, adb) is in the
 > [Commands Cheatsheet](commands.md).
 
-**Test scripts**
-
 | Script | What it does |
 |---|---|
 | `npm test` | Runs the suite on `android-real` |
 | `npm run test:android` | Same as `npm test` |
-| `npm run test:android-emulator` | Runs the suite on an Android emulator |
-| `npm run test:ios-sim` | Runs the suite on an iOS simulator |
-| `npm run test:ios` | Runs the suite on a real iPhone |
-
-**Tool scripts**
-
-| Script | What it does |
-|---|---|
+| `npm run test:android-emulator` | Runs the suite on `android-emulator` |
 | `npm run verify` | TypeScript checks, ESLint and architecture conventions ([what it checks](docs/static-analysis.md)) |
-| `npm run extract -- <screen-slug>` | Captures the current device screen as locator evidence in `.ui-evidence/` (Android only for now; see [AI-first automation](#-ai-first-automation)) |
-
-### Running part of the suite
-
-Arguments after `--` are passed on to Mobilewright:
-
-```bash
-npm test -- tests/login.spec.ts                 # one file
-npm test -- tests/login.spec.ts:8               # one test, by file:line
-npm test -- --grep "Login Tests"                # describe block or test title (regex)
-npm test -- --grep @smoke                       # tag
-npm test -- --list                              # list the tests, no device needed
-```
-
-More filters are in the [Commands Cheatsheet](commands.md).
+| `npm run extract -- <screen-slug>` | Captures the current device screen as locator evidence in `.ui-evidence/` (Android only; needs `DEVICE_ID`; see [AI-first automation](#-ai-first-automation)) |
 
 ---
 
@@ -264,15 +310,20 @@ mobilewright/
 ├── mobilewright-report/                  # HTML report; open with `npx mobilewright show-report` (git-ignored)
 │
 ├── tests/                                # *.spec.ts only; specs call Page Object methods, never screen.*
-│   └── login.spec.ts                     # retail-staging login (opts out of the automatic login)
+│   ├── login.spec.ts                     # Login: valid login + negative cases (opts out of the automatic login)
+│   └── staging-users.spec.ts             # Temporary: logs in with each staging account, records its display name
 ├── pages/                                # One Page Object per screen
-│   ├── LoginPage.ts                      # retail-staging Login screen
-│   ├── HomePage.ts                       # Left over from the POC, to be replaced
-│   └── ProfilePage.ts                    # Left over from the POC, to be replaced
-├── components/                           # Reusable widgets, used by pages (POC widgets for now)
-│   ├── BottomNavBar.ts                   # Bottom tab navigation
-│   ├── Checkbox.ts                       # Wraps a checkbox locator passed in by its page
-│   └── DatePicker.ts                     # Year / month / day picker
+│   ├── LoginPage.ts                      # Login screen
+│   ├── HomePage.ts                       # Home screen (greeting, quick actions, biometric popup)
+│   ├── ProfilePage.ts                    # Left over from the POC, to be replaced
+│   └── components/                       # Reusable widgets, used by pages (@components/*)
+│       ├── BottomNavBar.ts               # Bottom tab navigation
+│       ├── EnableBiometricPopup.ts       # "Enable Biometric" dialog shown after login
+│       ├── Checkbox.ts                   # Wraps a checkbox locator passed in by its page (POC, unused)
+│       ├── DatePicker.ts                 # Year / month / day picker (POC, unused)
+│       └── login/
+│           ├── InvalidCredentialsDialog.ts  # Wrong username or password dialog
+│           └── MissingInformationAlert.ts   # Empty username/password alert
 ├── fixtures/
 │   ├── index.ts                          # ← import { test, expect } from '@fixtures'; fixture inventory
 │   ├── pages.fixture.ts                  # Page Object fixtures
@@ -282,10 +333,7 @@ mobilewright/
 ├── models/
 │   └── UserModel.ts                      # User type (username, password)
 ├── data/                                 # Test data typed with models/ (dummy accounts only)
-│   └── users.ts                          # Login accounts (StandardUser)
-├── config/
-│   ├── targets.ts                        # Targets and the app bundle ID (com.SCP.Not on this branch)
-│   └── env.ts                            # Machine settings read from .env (DEVICE_ID, ANDROID_APP, IOS_APP)
+│   └── users.ts                          # Staging accounts, StandardUser, invalid-login rows
 ├── utils/
 │   ├── step.ts                           # @step decorator: POM methods show as named report steps
 │   └── ui-tree-extractor.ts              # Dumps the screen via mobilecli, filters and redacts, writes evidence
@@ -301,7 +349,7 @@ mobilewright/
 ├── .env.example                          # Template for .env (copy it; never commit .env)
 ├── .gitignore
 ├── package.json                          # npm scripts (verify, test:*, extract) and dependencies
-├── mobilewright.config.ts                # Test runner config: one project per target, timeouts, reporters
+├── mobilewright.config.ts                # Test runner config: bundle ID, targets (projects), .env settings, timeouts, reporters
 ├── eslint.config.mjs                     # Lint rules (see docs/static-analysis.md)
 └── tsconfig.json                         # TypeScript config and path aliases (@fixtures, @pages, …)
 ```
@@ -312,10 +360,10 @@ mobilewright/
 
 - Specs import `test` / `expect` from `@fixtures` and call Page Object methods only; no `screen.*`
   calls in specs.
-- One Page Object per screen in `pages/`; reusable widgets in `components/`. A locator lives only
+- One Page Object per screen in `pages/`; reusable widgets in `pages/components/`. A locator lives only
   in its owner, as a private factory method.
 - Locators come from evidence (a `.ui-evidence/` capture or existing code), never guessed.
-- Meaningful action and verify methods carry `@step('…')` from `utils/step.ts`, so reports read as
+- Meaningful action and verify methods carry `@step('…')` from `@utils/step`, so reports read as
   user actions. Full rule: the
   [`mobilewright-pom-builder` skill](.agents/skills/mobilewright-pom-builder/SKILL.md).
 - Tests are independent: no shared state, no order dependence.

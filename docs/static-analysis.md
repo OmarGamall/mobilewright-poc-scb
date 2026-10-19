@@ -28,8 +28,8 @@ There is **no Mobilewright ESLint plugin**. We don't need one:
 | `eslint` | The lint engine (Stage 2); runs our `no-restricted-syntax` rules | All `**/*.ts` |
 | `@eslint/js` | ESLint's built-in `recommended` rules | All `**/*.ts` |
 | `typescript-eslint` | Parses TypeScript; type-aware rules (`any`, promises, assertions) | All `**/*.ts` |
-| `eslint-plugin-playwright` | Test-runner rules (focused/skipped tests, assertions, awaits) | `tests/`, `pages/`, `components/`, `fixtures/` |
-| `eslint-plugin-jsdoc` | JSDoc + `@param` on public POM/Component methods | `pages/`, `components/` |
+| `eslint-plugin-playwright` | Test-runner rules (focused/skipped tests, assertions, awaits) | `tests/`, `pages/` (incl. `pages/components/`), `fixtures/` |
+| `eslint-plugin-jsdoc` | JSDoc + `@param` on public POM/Component methods | `pages/` (incl. `pages/components/`) |
 | `@eslint-community/eslint-plugin-eslint-comments` | Rules for `eslint-disable` comments | All `**/*.ts` |
 
 All are **project-local `devDependencies`, pinned to exact versions** in
@@ -78,7 +78,7 @@ Type-checks every `**/*.ts` file. Nothing is emitted.
 |---|---|
 | `strict` | Implicit `any`, possible `null`/`undefined` access, wrongly-typed arguments |
 | `forceConsistentCasingInFileNames` | `import './loginPage'` when the file is `LoginPage.ts` (works on Windows, breaks on Linux/macOS CI) |
-| `paths` | That `@fixtures`, `@pages/*`, `@components/*`, `@models/*`, `@helpers/*`, `@config/*`, `@data/*` resolve |
+| `paths` | That `@fixtures`, `@fixtures/*`, `@pages/*`, `@components/*` (→ `pages/components/`), `@models/*`, `@helpers/*`, `@data/*`, `@utils/*` resolve |
 
 ---
 
@@ -99,8 +99,8 @@ Baseline: `eslint:recommended` + `typescript-eslint` recommended, plus:
 | `@typescript-eslint/await-thenable` | `await` on something that isn't a promise | Usually means you called the wrong method |
 | `@typescript-eslint/require-await` | An `async` function that never awaits | Either an `await` is missing, or `async` is misleading |
 | `@typescript-eslint/no-explicit-any` | `: any` anywhere | Hides typos in locator options and fixture shapes |
-| `@typescript-eslint/consistent-type-imports` | `import { Screen }` when `Screen` is only a type | Use `import type`; keeps runtime imports honest (AGENTS.md) |
-| `@typescript-eslint/explicit-module-boundary-types` | An exported function or public method without a return type | AGENTS.md: every public method declares `Promise<void>` etc. |
+| `@typescript-eslint/consistent-type-imports` | `import { Screen }` when `Screen` is only a type | Use `import type`; keeps runtime imports honest (`mobilewright-pom-builder` skill §2) |
+| `@typescript-eslint/explicit-module-boundary-types` | An exported function or public method without a return type | Every public POM method declares its return type, e.g. `Promise<void>` (`mobilewright-pom-builder` skill §2) |
 | `@typescript-eslint/no-unnecessary-type-assertion` | `x as T` / `x!` when `x` is already `T` | A stale cast hides real type changes in Mobilewright upgrades |
 | `@typescript-eslint/switch-exhaustiveness-check` | A `switch` over a union (e.g. `NavTab`) missing a member | Adding a new tab must not silently fall through |
 | `no-empty` | `catch {}` | Swallowed errors make a failing step look like a pass |
@@ -112,14 +112,14 @@ Baseline: `eslint:recommended` + `typescript-eslint` recommended, plus:
 | `eslint-comments/no-unlimited-disable` | A bare `// eslint-disable` | Name the one rule you are disabling |
 | `eslint-comments/no-unused-disable` | A disable comment that suppresses nothing | Delete it |
 
-### 2.2 `tests/`, `pages/`, `components/`, `fixtures/` — test-runner rules
+### 2.2 `tests/`, `pages/`, `fixtures/` — test-runner rules
 
 Baseline: `eslint-plugin-playwright` recommended, with these as **errors**:
 
 | Rule | Fails on | Do instead |
 |---|---|---|
 | `missing-playwright-await` | `expect(locator).toBeVisible()` without `await` | `await expect(…)` — otherwise the assertion never runs |
-| `expect-expect` | A test with no assertion | End the test with `expect(…)` or a POM `verify…()` method (both count). AGENTS.md: actions with no assertion are not tests |
+| `expect-expect` | A test with no assertion | End the test with `expect(…)` or a POM `verify…()` method (both count). Actions with no assertion are not tests (`mobilewright-spec-writer` skill §3) |
 | `no-focused-test` | `test.only` | Remove before committing — it silently skips every other test |
 | `no-skipped-test` | `test.skip`, `test.fixme` | Remove, or fix the test |
 | `no-nth-methods` | `.first()`, `.last()`, `.nth()` | A specific label/role locator backed by `.ui-evidence`; or disable with a reason (see below) |
@@ -129,7 +129,7 @@ Baseline: `eslint-plugin-playwright` recommended, with these as **errors**:
 Warnings from the recommended set (e.g. `no-conditional-in-test`) are shown but
 don't fail the run.
 
-### 2.3 `pages/` and `components/` — locator discipline + JSDoc
+### 2.3 `pages/` (incl. `pages/components/`) — locator discipline + JSDoc
 
 Mobile UI trees are rebuilt on every frame, so a locator stored once goes stale.
 Locators are **private factory methods** that build a fresh locator on each call.
@@ -174,8 +174,8 @@ folder structure that ESLint can't see. It lists every violation, then exits `1`
 
 | # | Check | Example failure |
 |---|---|---|
-| 1 | `pages/**` files are PascalCase, end in `Page`, export exactly one class named after the file | `pages/Login.ts: Page Object file names end in "Page" (e.g. LoginPage.ts)` |
-| 2 | `components/**` files are PascalCase and export exactly one class named after the file | `components/DatePicker.ts: class Picker does not match file name (expected DatePicker)` |
+| 1 | `pages/**` files (except `pages/components/`) are PascalCase, end in `Page`, export exactly one class named after the file | `pages/Login.ts: Page Object file names end in "Page" (e.g. LoginPage.ts)` |
+| 2 | `pages/components/**` files are PascalCase and export exactly one class named after the file | `pages/components/DatePicker.ts: class Picker does not match file name (expected DatePicker)` |
 | 3 | Every `fixtures/*.fixture.ts` is registered in `fixtures/index.ts` | `fixtures/settings.fixture.ts: not registered in fixtures/index.ts` |
 | 4 | No top-level folder outside the AGENTS.md layout | `reports/: top-level folder not in the allowlist in scripts/check-conventions.mjs` |
 | 5 | Files under `tests/` are `*.spec.ts` or `*.setup.ts` | `tests/utils.ts: files under tests/ must be *.spec.ts or *.setup.ts` |
@@ -216,8 +216,8 @@ await new Promise((resolve) => setTimeout(resolve, SCROLL_SETTLE_MS));
 // eslint-disable-next-line
 ```
 
-A fixed settle delay is acceptable **only inside `components/`**, when the UI has no
-observable ready-signal (AGENTS.md, Waiting Rules); the disable reason is that
+A fixed settle delay is acceptable **only inside `pages/components/`**, when the UI has no
+observable ready-signal (`mobilewright-pom-builder` skill §5); the disable reason is that
 documentation. A disable comment that stops matching anything after a refactor is
 itself an error (`no-unused-disable`); delete it.
 

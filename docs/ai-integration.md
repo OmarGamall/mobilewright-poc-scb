@@ -63,7 +63,8 @@ Unlock the device, open the app on the target screen **and state**, close the
 keyboard (unless it is part of the state), then:
 
 ```bash
-npm run extract -- <slug>          # slug = screen + state, e.g. home, home-country-dropdown
+npm run extract -- <slug>          # slug = screen + state, e.g. home, login-invalid-credentials
+                                   # needs DEVICE_ID in .env (see README › Configuration)
 npm run extract -- <slug> --raw    # also save mobilecli's unfiltered dump
 ```
 
@@ -88,7 +89,7 @@ A real capture of the Home screen (trimmed):
 
 ```yaml
 # UI Evidence — home1
-# Captured: 2026-10-13T13:43:53.070Z · app com.SCP.Not v23.2.2 · device HONOR 400 (DNY-NX9), android 16, real · screen 1264x2736
+# Captured: <timestamp> · app <bundle-id> v<version> · device <model>, android <n>, real · screen <width>x<height>
 # Redacted: text typed into text fields. NOT redacted: labels, static text, and the screenshot (all may contain names/emails).
 # role: Mobilewright getByRole role ("none" = no role; use getByLabel / getByText). at: x,y widthxheight (px).
 # focused / checked / selected are listed only when true.

@@ -2,7 +2,7 @@
 name: mobilewright-pom-builder
 description: >-
   Judgment rules for creating or changing Mobilewright TypeScript Page Objects
-  (pages/) and Components (components/) for a Flutter/Android app: new screen
+  (pages/) and Components (pages/components/) for a Flutter/Android app: new screen
   POM or reusable widget (picker, checkbox, nav bar, bottom sheet), adding or
   changing a method, locator, locator factory, verify method, or wait.
 ---
@@ -24,7 +24,7 @@ hand-check. This skill covers what lint cannot decide.
 - **Using a capture:** the extractor already strips system UI, redacts typed
   text and computes each element's `role`; don't re-check that. Check: (1) the
   slug is the screen and state you need (state is encoded in the slug, e.g.
-  `home-country-dropdown` = home with the country list open); (2) its
+  `login-miss-username-pass` = login with the Missing Information alert shown); (2) its
   `warnings:` are resolved (duplicates, keyboard, overlay…); (3) labels hold no
   real personal data (the dummy `data/` accounts and `@test.com` addresses are
   fine). If any fails, ask for a re-capture.
@@ -41,7 +41,7 @@ hand-check. This skill covers what lint cannot decide.
 | What | Where | Shape |
 |---|---|---|
 | A full app screen | `pages/<Name>Page.ts` | plain class, `constructor(private readonly screen: Screen)` |
-| A reusable widget (picker, checkbox, nav bar, sheet) | `components/<Name>.ts` | plain class taking `Screen`, or the host `Locator` it wraps (see `Checkbox`) |
+| A reusable widget (picker, checkbox, nav bar, sheet) | `pages/components/<Name>.ts` | plain class taking `Screen`, or the host `Locator` it wraps (see `Checkbox`) |
 
 - A page uses a component through a **private factory**
   (`private navBar() { return new BottomNavBar(this.screen); }`), never a field.
@@ -70,7 +70,7 @@ Skeleton (every `<…>` is a placeholder that needs evidence):
 ```typescript
 import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
-import { step } from '../utils/step';
+import { step } from '@utils/step';
 
 /**
  * @fileoverview <What this screen does, one line.>
@@ -119,7 +119,7 @@ constantly, and a factory resolves fresh on every call.
 |---|---|
 | Exactly one on screen | `private getX()` |
 | One of a fixed set (tab, menu item) | **typed-key factory**: `private getTab(tab: NavTab)`; the union/enum lives in the component or `models/` |
-| Identified by test data (country, list row) | **runtime-data factory**: `private getCountryOption(country: string)` |
+| Identified by test data (user name, list row) | **runtime-data factory**: `private getUserName(displayName: string)` |
 | A control inside a container | **chain** off the container: `this.getRow(x).getByRole('button', …)` |
 
 **Writing a factory or matching a label pattern? Read `references/locator-patterns.md`.**
@@ -132,7 +132,7 @@ to stay high.
 | # | Locator | Matches (Android) | Use when |
 |---|---|---|---|
 | 1 | `getByTestId(id)` | `resource-id` (Flutter `Semantics(identifier:)`) | `identifier:` appears in the capture. Stable across locale and copy changes. Pass the bare id; `pkg:id/name` also matches `name` |
-| 2 | `getByLabel(label)` | accessibility label (`content-desc`) | The app sets semantic labels: the `UPPER_SNAKE` keys here (`LOGIN_INPUT_USERNAME`) are deliberate test hooks |
+| 2 | `getByLabel(label)` | accessibility label (`content-desc`) | The capture shows a unique label. Prefer a stable key part over visible copy (on Login, `USERNAME input field for username_field`) |
 | 3 | `getByRole(role, { name })` | native type mapped to a role, + label (or text) | No unique label, but role + name is unique. Roles: `button`, `textfield`, `checkbox`, `radio`, `switch`, `tab`, `text`, `image`, `list`, `listitem`, … (full list: `ROLE_TYPE_MAP` in `query-engine.d.ts`) |
 | 4 | `getByText(text)` | visible text, else label | Static visible copy only; breaks on translation and copy edits |
 | 5 | `getByPlaceholder(text)` | `placeholder` (input hint) | An empty input whose only handle is its hint (`placeholder:` in the capture); breaks on translation like text |
@@ -150,7 +150,7 @@ to stay high.
   tested. Use a regex only for labels with a known format (multi-line nav tabs,
   date cells), **anchor it** (`^…`, `…$`), and escape any test data inside it.
 - `getByLabel` accepts a string only. A role-less `View` whose label merges
-  several texts (`"User Profile\nUsername:\n…"`) is matched with an anchored
+  several texts (`"alert\nMissing Information\n…"`) is matched with an anchored
   `getByText(/^…/)`, which falls back to the label: see
   `references/locator-patterns.md` §6.
 - Scope by container instead of reaching for `.first()`/`.nth()`/`.last()`.
@@ -159,7 +159,7 @@ to stay high.
 
 ## 4. Actions
 
-- Name public methods as domain verbs: `login()`, `selectCountry()`,
+- Name public methods as domain verbs: `login()`, `declineBiometric()`,
   `navigateTo(tab)`, not `tapLoginButton()`.
 - Parameters use `models/` types or unions (`NavTab`, `PickerDate`) instead of
   `string` wherever one exists, so typos fail at compile time.
@@ -172,7 +172,8 @@ to stay high.
 - **Keyboard:** an open soft keyboard covers bottom-of-screen targets (nav bar,
   submit), and a tap there lands on the keyboard. It opens when a field gets
   focus: after our `fill()`, **and also when a screen auto-focuses a field on
-  arrival** (Home does after login). Mobilewright cannot detect an open keyboard.
+  arrival** (observed on the POC app's Home after login; unverified on the
+  current app). Mobilewright cannot detect an open keyboard.
   Close it with `dismissKeyboard(this.screen)` from `helpers/keyboard.ts`
   (sends ENTER; on the tested Android device it closes the keyboard and does
   nothing when none is open):
@@ -184,14 +185,14 @@ to stay high.
   Specs never handle the keyboard. Details and what is verified:
   `references/sync-patterns.md` § Keyboard.
 
-### `@step` reporting rule (import from `../utils/step`)
+### `@step` reporting rule (import from `@utils/step`)
 
 The report should read as one domain step per user action, with the raw
 `locator.*` calls inside it. So:
 
 | Layer | Decorate | Don't decorate |
 |---|---|---|
-| **Page** | every public action and verify method, including ones that delegate to a component (`setTermsCheckboxState` → `Checkbox`): the page knows the domain name ("terms") | locator factories, constructors, non-async or value-returning methods (`isPasswordMasked`) |
+| **Page** | every public action and verify method, including ones that delegate to a component (`HomePage.declineBiometric` → `EnableBiometricPopup.decline`): the page knows the domain name ("biometric") | locator factories, constructors, non-async or value-returning methods (`HomePage.getDisplayName`) |
 | **Component** | only the private, named phases of a multi-step flow (`DatePicker.selectYear`, `goToMonth`, `selectDay`) | its public methods (the calling page's step names them), single-action methods, loop/retry helpers (`scrollYears`) |
 
 - **Templates:** `{0}`, `{1}` interpolate arguments; quote string values,
@@ -212,7 +213,7 @@ visible, enabled and stable. Decide for **every** action with a side effect:
    extra; the next action/assertion waits for it.
 2. Does it close a picker / sheet / dropdown / dialog this POM owns? → before
    returning, `waitFor({ state: 'hidden' })` on that overlay's own anchor
-   (e.g. the dropdown's `Dismiss` view). Otherwise the next tap can land on the
+   (e.g. the popup title in `EnableBiometricPopup.decline`). Otherwise the next tap can land on the
    closing overlay.
 3. Does it change screen? → return after the tap; **the caller verifies the
    destination** with that screen's POM (`login()` then
@@ -238,7 +239,7 @@ sheets, keyboard handling, or app relaunch/state.
   `waitFor`: it reports as an assertion with expected vs received.
 - Add a message (2nd arg) when the locator alone doesn't say what is being
   checked (regex labels, merged views):
-  `expect(card, 'profile shows the logged-in username')`.
+  `expect(this.getAlert(), 'Missing Information alert is shown')`.
 - The expected value is a parameter the spec passes from `data/` or the
   fixture's user; never hardcode what a capture happened to show.
 - **Absence** (`toBeHidden`, `.not.toBeVisible()`) passes instantly before the

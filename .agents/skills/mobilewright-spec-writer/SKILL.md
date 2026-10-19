@@ -27,7 +27,7 @@ guessed data or several behaviors in one test. Those are on you.
 - **Fixtures:** inventory table in `fixtures/index.ts`. Every test starts
   **logged in** on the Home screen (auto fixture `authenticate`); a spec that
   needs the login screen opts out with `test.use({ loggedIn: false })`.
-- **POM methods:** `grep -rn "async <verb>" pages/ components/`, then read the
+- **POM methods:** `grep -rn "async <verb>" pages/`, then read the
   signature: params, return value, and whether it already verifies.
 - **Data:** `data/` (accounts in `data/users.ts`, feature data in
   `data/<feature>.data.ts`); types in `models/` or exported by the component
@@ -42,7 +42,7 @@ A missing fixture is also a gap: name it in the plan and ask.
 - Path `tests/<feature>.spec.ts`; extend an existing spec before creating a
   near-duplicate. `test.describe('<Feature> Tests')`, nested describes per group.
 - `// Arrange`, `// Act`, `// Assert` comments in every test, each with a short
-  phrase (`// Act: Fill the Phase 3 form`). A test with nothing to arrange
+  phrase (`// Act: Log in with a valid account`). A test with nothing to arrange
   starts at `// Act`.
 - **One behavior per test.** Title `should <outcome> [when <condition>]`,
   unique (DDT titles interpolate `scenario.desc`).
@@ -85,7 +85,7 @@ A missing fixture is also a gap: name it in the plan and ask.
   error shown), not that an action ran.
 - Assert through POM `verify…` methods (they hold the auto-waiting `expect`).
   `expect(value)` only on data a POM method returned.
-- Prefer the strongest check: the resulting state (`verifyUsername(…)`) over
+- Prefer the strongest check: the resulting state (`verifyOnHomeScreen(user.displayName)`) over
   "the screen is still open".
 - **Every input the test sets is checked** when it is the behavior under test.
   If no `verify…` method exists for it, that is a gap (§0), not something to

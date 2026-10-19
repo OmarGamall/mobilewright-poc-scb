@@ -2,7 +2,7 @@
 name: mobilewright-pom-builder
 description: >-
   Judgment rules for creating or changing Mobilewright TypeScript Page Objects
-  (pages/) and Components (components/) for a Flutter/Android app: new screen
+  (pages/) and Components (pages/components/) for a Flutter/Android app: new screen
   POM or reusable widget (picker, checkbox, nav bar, bottom sheet), adding or
   changing a method, locator, locator factory, verify method, or wait.
 ---

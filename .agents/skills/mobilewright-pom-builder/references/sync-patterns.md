@@ -50,9 +50,11 @@ async pick(date: PickerDate): Promise<void> {
 }
 ```
 
-Real version: `DatePicker.pick`. The hidden wait is backed by evidence that the
-title is absent once the sheet closes (`home-locators.yml` has no
-`Select Date`); confirm the equivalent for any new sheet.
+Real version: `DatePicker.pick` (a POC component; no current spec exercises
+it). The hidden wait relies on the title being absent once the sheet closes;
+confirm that in a capture of the closed state for any new sheet. Current
+examples of the closing wait: `EnableBiometricPopup.decline`,
+`InvalidCredentialsDialog.cancel`.
 
 ## Scrolling
 
@@ -78,9 +80,9 @@ short settle delay with a disable reason (see `DatePicker.scrollYears`).
 
 **How it opens.** `fill()` taps the field, clears it (`ctrl+a`, `backspace`)
 and sends the text through the device. The *tap* focuses the field, and focus
-is what raises the soft keyboard. A screen can also focus a field by itself:
-**Home auto-focuses the username field after login**, so the keyboard is open
-with no typing by our code. An open keyboard covers the lower half of the
+is what raises the soft keyboard. A screen can also focus a field by itself, so the keyboard is open with no
+typing by our code (observed on the POC app's Home after login; unverified on
+the current app). An open keyboard covers the lower half of the
 screen (nav bar, submit), and a tap there lands on the keyboard.
 
 **How to close it.** Mobilewright has no API to detect or hide the keyboard.
@@ -91,14 +93,16 @@ screen (nav bar, submit), and a tap there lands on the keyboard.
 2. right before tapping anything a keyboard may cover.
 
 ```typescript
-// pages/HomePage.ts — after typing
-@step('Input username "{0}"')
-async inputUsername(username: string): Promise<void> {
-  await this.getUsernameInput().fill(username);
-  await dismissKeyboard(this.screen);
-}
+// pages/LoginPage.ts (login) — after the last fill, before a tap the keyboard covers
+await this.getUsernameInput().fill(username);
+await this.getPasswordInput().fill(password);
 
-// components/BottomNavBar.ts — before a tap the keyboard may cover
+// The open keyboard covers the submit button
+await dismissKeyboard(this.screen);
+
+await this.getSubmitButton().tap();
+
+// pages/components/BottomNavBar.ts — before a tap the keyboard may cover
 // (today it also carries @step; per the SKILL.md layering rule that moves to the pages)
 async navigateTo(tab: NavTab): Promise<void> {
   await dismissKeyboard(this.screen);
@@ -107,18 +111,18 @@ async navigateTo(tab: NavTab): Promise<void> {
 ```
 
 **Never use Back (`screen.goBack()`) for the keyboard:** with no keyboard open
-it navigates away. The old Back in `BottomNavBar` only worked because Home's
-auto-focused field meant a keyboard was always open there; removing it made the
+it navigates away. The old Back in `BottomNavBar` only worked because the POC
+Home's auto-focused field meant a keyboard was always open there; removing it made the
 Profile-navigation test fail 3/3 (the tab tap landed on the keyboard).
 
-**Verified** on a real Android device (AU3N025B20000393, this app):
+**Verified** on a real Android device:
 
 | Situation | ENTER does |
 |---|---|
 | Keyboard open on a single-line field | closes it and clears the field's focus |
 | Password field on Login | closes it; does **not** submit the form (`login.spec` passes, so the submit button was still there to tap) |
 | No field focused | nothing (manual check) |
-| Home after login (auto-focused field) | closes it; the nav-bar tap then works |
+| POC Home after login (auto-focused field) | closes it; the nav-bar tap then works |
 
 **Not verified — check before relying on it:**
 - Android emulators: whether a soft keyboard appears at all depends on the AVD's
