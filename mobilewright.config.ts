@@ -1,28 +1,36 @@
-import { defineConfig, type MobilewrightProjectConfig } from 'mobilewright';
-import { ENV } from './config/env';
-import { BUNDLE_IDS, TARGETS, type TargetName } from './config/targets';
+import * as dotenv from 'dotenv';
+import { defineConfig } from 'mobilewright';
 
-const APPS = { android: ENV.androidApp, ios: ENV.iosApp } as const;
+// Machine-specific settings come from .env locally or from the CI job's environment;
+// variables already set are not overwritten. See .env.example.
+dotenv.config();
 
-/** One project per target whose platform has a known bundle ID; select with `--project=<name>`. */
-const projects: MobilewrightProjectConfig[] = (Object.keys(TARGETS) as TargetName[])
-  .filter((name) => BUNDLE_IDS[TARGETS[name].platform] !== undefined)
-  .map((name) => {
-    const { platform, deviceType } = TARGETS[name];
-    return {
-      name,
-      use: {
-        platform,
-        deviceType,
-        bundleId: BUNDLE_IDS[platform],
-        deviceId: ENV.deviceId,
-        installApps: APPS[platform],
-      },
-    };
-  });
+/** Returns the variable, or undefined when it is unset or blank. */
+const env = (name: string): string | undefined => process.env[name]?.trim() || undefined;
 
 export default defineConfig({
-  projects,
+  /**
+   * The app under test (Android package name), committed per branch. Every target launches
+   * it by this ID before each test.
+   */
+  bundleId: 'com.SCP.Not',
+  /**
+   * Pin one device (phone serial or emulator ID from `adb devices`). Applies to every target:
+   * unset it to run on the other device type. Unset = first device matching the target's deviceType.
+   */
+  deviceId: env('DEVICE_ID'),
+  /**
+   * Local .apk to install before the run (e.g. the build CI downloaded). Only installs; the app
+   * is always launched by bundleId. Unset = use the app already installed on the device.
+   */
+  installApps: env('ANDROID_APP'),
+
+  /** One project per target; pick one per run with `--project=<name>` (or an npm script). */
+  projects: [
+    { name: 'android-real', use: { platform: 'android', deviceType: 'real' } },
+    { name: 'android-emulator', use: { platform: 'android', deviceType: 'emulator' } },
+  ],
+
   reporter: [['list'], ['html', { outputFolder: 'mobilewright-report' }]],
   forbidOnly: !!process.env.CI,
   viewTree: 'on-failure',

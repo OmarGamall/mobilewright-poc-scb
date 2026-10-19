@@ -2,17 +2,16 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ROLE_TYPE_MAP, bareTypeName } from '@mobilewright/core';
-import { ENV } from '../config/env';
-import { BUNDLE_IDS } from '../config/targets';
+import config from '../mobilewright.config';
 
 /**
  * @fileoverview UI evidence extractor: captures the current screen of the connected
  * device and writes `.ui-evidence/<slug>-locators.yml` (+ screenshot, + raw dump on
  * request) for agents and people writing locators.
  *
- * Android only for now: the app-root, system-UI and layout rules below are Android's.
- * Other platforms are rejected (see `assertSupportedDevice`) until the config refactor
- * adds per-platform support.
+ * Android only: the app-root, system-UI and layout rules below are Android's, and the
+ * project defines Android targets only. Other platforms are rejected (see
+ * `assertSupportedDevice`); iOS support needs its own rules here.
  */
 
 const OUTPUT_DIR = path.join(process.cwd(), '.ui-evidence');
@@ -352,7 +351,7 @@ export function renderEvidence(
 
   const header = [
     `# UI Evidence — ${screenName}`,
-    `# Captured: ${new Date().toISOString()} · app ${app ? `${app.packageName} v${app.version ?? '?'}` : `${BUNDLE_IDS.android} (not verified)`} · ` +
+    `# Captured: ${new Date().toISOString()} · app ${app ? `${app.packageName} v${app.version ?? '?'}` : `${config.bundleId} (not verified)`} · ` +
       `device ${device.name}${device.model ? ` (${device.model})` : ''}, ${device.platform} ${device.version}, ${device.type} · ` +
       `screen ${device.screenSize.width}x${device.screenSize.height}`,
     '# Redacted: text typed into text fields. NOT redacted: labels, static text, and the screenshot (all may contain names/emails).',
@@ -385,13 +384,13 @@ export interface ExtractOptions {
  *   <slug>-raw.json      mobilecli's unfiltered dump (only with `raw: true`; otherwise an
  *                        older one for the same slug is removed)
  *
- * The app (BUNDLE_IDS.android) must be in the foreground on the target screen and state.
+ * The app (config.bundleId) must be in the foreground on the target screen and state.
  *
  * @param screenName - Slug naming the screen and its state, e.g. 'home', 'home-country-dropdown'.
  * @param options - Extra outputs; see {@link ExtractOptions}.
  */
 export function dumpUITree(screenName: string, options: ExtractOptions = {}): void {
-  const deviceId = ENV.deviceId;
+  const deviceId = config.deviceId;
   if (!deviceId) {
     throw new Error('[ui-tree-extractor] DEVICE_ID is not set. Ensure your .env file exists and contains DEVICE_ID.');
   }
@@ -407,11 +406,11 @@ export function dumpUITree(screenName: string, options: ExtractOptions = {}): vo
   try {
     app = mobilecliData<ForegroundApp>(`apps foreground --device ${deviceId}`);
   } catch {
-    windowWarnings.push(`app: mobilecli could not determine the foreground app; check the screenshot shows ${BUNDLE_IDS.android}`);
+    windowWarnings.push(`app: mobilecli could not determine the foreground app; check the screenshot shows ${config.bundleId}`);
   }
-  if (app && app.packageName !== BUNDLE_IDS.android) {
+  if (app && app.packageName !== config.bundleId) {
     throw new Error(
-      `[ui-tree-extractor] foreground app is ${app.packageName}, expected ${BUNDLE_IDS.android}. ` +
+      `[ui-tree-extractor] foreground app is ${app.packageName}, expected ${config.bundleId}. ` +
       'Open the app on the target screen (and unlock the device), then retry.',
     );
   }
