@@ -2,7 +2,7 @@
 // Silent on success; prints every violation and exits 1. Documented in docs/static-analysis.md.
 import { execSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, join, sep } from 'node:path';
 
 const walk = (dir) =>
   readdirSync(dir).flatMap((name) => {
@@ -12,15 +12,16 @@ const walk = (dir) =>
 const PASCAL = /^[A-Z][A-Za-z0-9]*$/;
 const errors = [];
 
-// 1–2. pages/** and components/**: PascalCase file; exactly one exported class, named after the file.
-//      Page Objects additionally end in "Page".
+// 1–2. pages/** (Page Objects) and pages/components/** (Components): PascalCase file; exactly one
+//      exported class, named after the file. Page Objects additionally end in "Page".
+const COMPONENTS_DIR = join('pages', 'components');
 const CLASS_FOLDERS = [
-  { dir: 'pages', suffix: 'Page' },
-  { dir: 'components', suffix: '' },
+  { dir: 'pages', suffix: 'Page', skip: COMPONENTS_DIR },
+  { dir: COMPONENTS_DIR, suffix: '' },
 ];
-for (const { dir, suffix } of CLASS_FOLDERS) {
+for (const { dir, suffix, skip } of CLASS_FOLDERS) {
   if (!existsSync(dir)) continue;
-  for (const file of walk(dir).filter((f) => f.endsWith('.ts'))) {
+  for (const file of walk(dir).filter((f) => f.endsWith('.ts') && !(skip && f.startsWith(skip + sep)))) {
     const stem = basename(file, '.ts');
     if (!PASCAL.test(stem)) {
       errors.push(`${file}: file name must be PascalCase (e.g. LoginPage.ts, DatePicker.ts)`);
@@ -51,7 +52,7 @@ const repoFiles = execSync('git ls-files --cached --others --exclude-standard', 
 
 // 4. no new top-level folder without an approved change (AGENTS.md folder layout). Extend this list in the same change.
 const TOP_LEVEL_DIRS = new Set([
-  '.agents', '.claude', '.ui-evidence', 'bug-reports', 'components', 'config', 'data', 'docs', 'fixtures',
+  '.agents', '.claude', '.ui-evidence', 'bug-reports', 'data', 'docs', 'fixtures',
   'helpers', 'models', 'pages', 'scripts', 'tests', 'utils',
 ]);
 for (const dir of new Set(repoFiles.filter((f) => f.includes('/')).map((f) => f.split('/')[0]))) {

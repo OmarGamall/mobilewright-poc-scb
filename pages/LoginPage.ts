@@ -3,7 +3,7 @@ import { expect } from '@mobilewright/test';
 import { dismissKeyboard } from '@helpers/keyboard';
 import { MissingInformationAlert } from '@components/login/MissingInformationAlert';
 import { InvalidCredentialsDialog } from '@components/login/InvalidCredentialsDialog';
-import { step } from '../utils/step';
+import { step } from '@utils/step';
 
 /**
  * @fileoverview Page Object Model for the retail-staging Login screen.

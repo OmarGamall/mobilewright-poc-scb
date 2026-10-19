@@ -2,7 +2,7 @@ import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
 import { BottomNavBar, type NavTab } from '@components/BottomNavBar';
 import { EnableBiometricPopup } from '@components/EnableBiometricPopup';
-import { step } from '../utils/step';
+import { step } from '@utils/step';
 
 export type QuickAction = 'Transfer' | 'Donate' | 'Open CD' | 'Ex. Rate';
 

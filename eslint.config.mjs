@@ -25,7 +25,7 @@ const FIXTURE_FILE_PATTERN = {
 const IMPORTS_ALL = ['error', { paths: [NO_PLAYWRIGHT_IMPORT], patterns: [FIXTURE_FILE_PATTERN] }];
 
 // ── Waiting (all folders) ────────────────────────────────────────────────
-// Fixed sleeps are allowed only in components/, on a line that carries
+// Fixed sleeps are allowed only in pages/components/, on a line that carries
 // `// eslint-disable-next-line no-restricted-syntax -- <why no ready-signal exists>`.
 const NO_FIXED_SLEEP = [
   {
@@ -155,7 +155,7 @@ export default tseslint.config(
   // ── Test-runner rules (Mobilewright runs on Playwright's runner) ────────
   {
     ...pw,
-    files: ['tests/**/*.ts', 'pages/**/*.ts', 'components/**/*.ts', 'fixtures/**/*.ts'],
+    files: ['tests/**/*.ts', 'pages/**/*.ts', 'fixtures/**/*.ts'],
     rules: {
       ...pw.rules,
       'playwright/missing-playwright-await': 'error',
@@ -169,9 +169,9 @@ export default tseslint.config(
     },
   },
 
-  // ── pages/** and components/**: locator discipline + JSDoc ─────────────
+  // ── pages/** (incl. pages/components/**): locator discipline + JSDoc ───
   {
-    files: ['pages/**/*.ts', 'components/**/*.ts'],
+    files: ['pages/**/*.ts'],
     plugins: { jsdoc },
     rules: {
       'no-restricted-syntax': ['error', ...NO_FIXED_SLEEP, ...POM_LOCATORS],
