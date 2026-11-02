@@ -30,4 +30,7 @@ import { test as authTest } from './auth.fixture';
 // fixture files (and check-conventions requires every *.fixture.ts imported here).
 export const test = mergeTests(pagesTest, authTest);
 
+// Record video for every test; individual specs may override with test.use({ video: 'off' }).
+test.use({ video: 'on' });
+
 export { expect } from '@mobilewright/test';
