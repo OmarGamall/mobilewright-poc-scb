@@ -152,25 +152,37 @@ The app is always **launched** by `bundleId`. `ANDROID_APP` only decides whether
 `ANDROID_APP` must be the path of an existing local `.apk`. Mobilewright cannot install from a
 URL, a folder or an `.aab`.
 
-#### APK from a URL (CI)
+#### APK from a GitHub Release (CI)
 
-When the build server publishes the APK over HTTP, download it before the tests and point
-`ANDROID_APP` at the file. Any CI system works the same way:
+[`.github/workflows/android-emulator.yml`](.github/workflows/android-emulator.yml) runs the
+suite on an Android emulator (API 34, `google_apis`, x86_64) on every push to `poc1`, or on
+demand. Each build under test is a GitHub Release holding exactly one `.apk`; the workflow
+downloads it, sets `ANDROID_APP`, and the config installs it on a clean emulator.
 
 ```bash
-# 1. Download the build (APK_URL comes from the CI job; keep it a secret if it carries a token)
-mkdir -p build
-curl -fsSL "$APK_URL" -o build/app.apk
+# 1. Publish a new build as a release (one release per build; *.apk is git-ignored)
+gh release create poc1-apk-2026-11-02 app-release.apk --prerelease --title "poc1 APK 2026-11-02" --notes "<build info>"
 
-# 2. Run the tests on the target the CI machine provides
-ANDROID_APP=build/app.apk npx mobilewright test --project=android-emulator
+# 2. Make it the default build for pushes and manual runs
+gh variable set POC1_APK_TAG --body poc1-apk-2026-11-02
+
+# 3. Optional: run one specific build (and API level) without changing the default
+gh workflow run android-emulator.yml --ref poc1 -f apk_tag=<tag> -f api_level=34
+gh run watch
 ```
 
-- `build/` is git-ignored.
-- The CI machine needs a running emulator (or a connected phone for `android-real`) before
-  step 2; Mobilewright does not start one.
-- Most CI systems set `CI`; the config then fails the run if a `test.only` was committed.
+- The job summary names the tag, size and SHA-256 of the APK each run tested.
+- Reports: download the `mobilewright-report` and `test-results` (videos) artifacts from the
+  run page, or `gh run download <run-id>`.
+- `gh workflow run` only works once the workflow file also exists on the default branch
+  (`main`); until then, runs come from pushes to `poc1`.
+- Mobilewright does not start an emulator; the workflow boots one with
+  `reactivecircus/android-emulator-runner` before the tests.
+- The config fails a CI run if a `test.only` was committed (`CI` is set).
 - A large APK may need `installTimeout` raised (default 60 s) in the config's `use`.
+
+Any other CI works the same way: download the `.apk` into `build/`, boot an emulator, then
+`ANDROID_APP=build/app.apk npx mobilewright test --project=android-emulator`.
 
 ### App under test (bundle ID)
 

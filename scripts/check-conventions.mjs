@@ -46,9 +46,10 @@ if (existsSync('fixtures')) {
 }
 
 // Tracked + untracked-but-not-ignored files, so generated output (reports, evidence) is skipped.
+// .github/ (CI workflows) is outside the framework's conventions and never checked.
 const repoFiles = execSync('git ls-files --cached --others --exclude-standard', { encoding: 'utf8' })
   .split('\n')
-  .filter(Boolean);
+  .filter((f) => f && !f.startsWith('.github/'));
 
 // 4. no new top-level folder without an approved change (AGENTS.md folder layout). Extend this list in the same change.
 const TOP_LEVEL_DIRS = new Set([

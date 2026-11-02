@@ -1,0 +1,141 @@
+# Runs the suite on an Android emulator, installing an APK stored as a GitHub Release asset.
+# The build under test is chosen per run: the `apk_tag` input, else the repo variable POC1_APK_TAG.
+# See README "APK from a GitHub Release (CI)".
+name: Android emulator tests
+
+on:
+  push:
+    branches: [poc1]
+  workflow_dispatch:
+    inputs:
+      apk_tag:
+        description: Release tag holding the .apk (empty = repo variable POC1_APK_TAG)
+        required: false
+        type: string
+      api_level:
+        description: Android API level of the emulator
+        required: false
+        default: '34'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  API_LEVEL: ${{ inputs.api_level || '34' }}
+  EMULATOR_TARGET: google_apis
+  EMULATOR_ARCH: x86_64
+  EMULATOR_PROFILE: pixel_6
+  EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Download the APK under test
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_TAG: ${{ inputs.apk_tag || vars.POC1_APK_TAG }}
+        run: |
+          if [ -z "$APK_TAG" ]; then
+            echo "::error::No APK tag: pass the apk_tag input or set the repo variable POC1_APK_TAG."
+            exit 1
+          fi
+          mkdir -p build
+          gh release download "$APK_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.apk' --dir build
+          count=$(ls build/*.apk | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Release $APK_TAG must hold exactly one .apk (found $count)."
+            exit 1
+          fi
+          apk=$(ls build/*.apk)
+          unzip -tq "$apk"
+          echo "ANDROID_APP=$apk" >> "$GITHUB_ENV"
+          {
+            echo "### APK under test"
+            echo "| Tag | File | Size | SHA-256 |"
+            echo "|---|---|---|---|"
+            echo "| \`$APK_TAG\` | \`$(basename "$apk")\` | $(du -h "$apk" | cut -f1) | \`$(sha256sum "$apk" | cut -d' ' -f1)\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v6
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-${{ env.EMULATOR_PROFILE }}
+
+      # The snapshot is taken before any APK is installed, so every run starts clean.
+      - name: Create AVD and snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: ${{ env.EMULATOR_TARGET }}
+          arch: ${{ env.EMULATOR_ARCH }}
+          profile: ${{ env.EMULATOR_PROFILE }}
+          force-avd-creation: false
+          emulator-options: ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      # ANDROID_APP (set above) makes the config's installApps install the build before the tests.
+      - name: Run tests on the emulator
+        uses: reactivecircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: ${{ env.EMULATOR_TARGET }}
+          arch: ${{ env.EMULATOR_ARCH }}
+          profile: ${{ env.EMULATOR_PROFILE }}
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
+          disable-animations: true
+          script: npm run test:android-emulator
+
+      - name: Upload HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobilewright-report
+          path: mobilewright-report/
+          retention-days: 14
+
+      - name: Upload test results (videos, failure trees)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14
