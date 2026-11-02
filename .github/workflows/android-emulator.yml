@@ -72,7 +72,8 @@ jobs:
             echo "::error::Release $APK_TAG must hold exactly one .apk (found $count)."
             exit 1
           fi
-          apk=$(ls build/*.apk)
+          # Absolute path: mobilecli runs adb from its own working directory, not the repo's.
+          apk=$(realpath build/*.apk)
           unzip -tq "$apk"
           echo "ANDROID_APP=$apk" >> "$GITHUB_ENV"
           {
