@@ -8,8 +8,6 @@
     "test": "mobilewright test --project=android-real",
     "test:android": "mobilewright test --project=android-real",
     "test:android-emulator": "mobilewright test --project=android-emulator",
-    "test:ios-sim": "mobilewright test --project=ios-simulator",
-    "test:ios": "mobilewright test --project=ios-real",
     "extract": "npx tsx scripts/extract-ui.ts"
   },
   "keywords": [],
