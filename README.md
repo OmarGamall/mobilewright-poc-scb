@@ -171,6 +171,7 @@ gh workflow run android-emulator.yml --ref poc1 -f apk_tag=<tag> -f api_level=34
 gh run watch
 ```
 
+- Full guide (pipeline, emulator, APK install, troubleshooting): [docs/ci.md](docs/ci.md).
 - The job summary names the tag, size and SHA-256 of the APK each run tested.
 - Reports: download the `mobilewright-report` and `test-results` (videos) artifacts from the
   run page, or `gh run download <run-id>`.
