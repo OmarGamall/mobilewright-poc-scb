@@ -1,7 +1,7 @@
 import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
 import { BottomNavBar, type NavTab } from '@components/BottomNavBar';
-import { step } from '../utils/step';
+import { step } from '@utils/step';
 
 /**
  * @fileoverview Page Object Model for the Profile screen.

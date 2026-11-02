@@ -9,13 +9,13 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@pages/*":       ["./pages/*"],
-      "@components/*":  ["./components/*"],
+      "@components/*":  ["./pages/components/*"],
       "@fixtures":      ["./fixtures/index.ts"],
       "@fixtures/*":    ["./fixtures/*"],
       "@models/*":      ["./models/*"],
       "@helpers/*":     ["./helpers/*"],
-      "@config/*":      ["./config/*"],
-      "@data/*":        ["./data/*"]
+      "@data/*":        ["./data/*"],
+      "@utils/*":       ["./utils/*"]
     }
   },
   "include": ["**/*.ts"]

@@ -3,7 +3,7 @@ import { DatePicker, type PickerDate } from '@components/DatePicker';
 import { Checkbox } from '@components/Checkbox';
 import { BottomNavBar, type NavTab } from '@components/BottomNavBar';
 import { dismissKeyboard } from '@helpers/keyboard';
-import { step } from '../utils/step';
+import { step } from '@utils/step';
 import { expect } from '@mobilewright/test';
 
 /**

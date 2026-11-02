@@ -1,5 +1,5 @@
 import type { Screen } from '@mobilewright/core';
-import { step } from '../utils/step';
+import { step } from '@utils/step';
 
 type Locator = ReturnType<Screen['getByRole']>;
 
