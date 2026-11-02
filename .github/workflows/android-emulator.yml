@@ -30,6 +30,10 @@ env:
   EMULATOR_TARGET: google_apis
   EMULATOR_ARCH: x86_64
   EMULATOR_PROFILE: pixel_6
+  # GitHub's Linux runners have 4 vCPUs / 16 GB; the action's default (2 cores) makes the
+  # software-rendered emulator too slow for the 60 s test timeout.
+  EMULATOR_CORES: 4
+  EMULATOR_RAM: 4096M
   EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
 
 jobs:
@@ -89,14 +93,15 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: AVD cache
-        uses: actions/cache@v6
+      # Restore and save are split so the snapshot is cached even when the tests then fail.
+      - name: Restore AVD cache
+        uses: actions/cache/restore@v6
         id: avd-cache
         with:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ env.API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-${{ env.EMULATOR_PROFILE }}
+          key: avd-${{ env.API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-${{ env.EMULATOR_PROFILE }}-${{ env.EMULATOR_CORES }}c-${{ env.EMULATOR_RAM }}
 
       # The snapshot is taken before any APK is installed, so every run starts clean.
       - name: Create AVD and snapshot
@@ -107,10 +112,21 @@ jobs:
           target: ${{ env.EMULATOR_TARGET }}
           arch: ${{ env.EMULATOR_ARCH }}
           profile: ${{ env.EMULATOR_PROFILE }}
+          cores: ${{ env.EMULATOR_CORES }}
+          ram-size: ${{ env.EMULATOR_RAM }}
           force-avd-creation: false
           emulator-options: ${{ env.EMULATOR_OPTIONS }}
           disable-animations: false
           script: echo "Generated AVD snapshot for caching."
+
+      - name: Save AVD cache
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: ${{ steps.avd-cache.outputs.cache-primary-key }}
 
       # ANDROID_APP (set above) makes the config's installApps install the build before the tests.
       - name: Run tests on the emulator
@@ -120,6 +136,8 @@ jobs:
           target: ${{ env.EMULATOR_TARGET }}
           arch: ${{ env.EMULATOR_ARCH }}
           profile: ${{ env.EMULATOR_PROFILE }}
+          cores: ${{ env.EMULATOR_CORES }}
+          ram-size: ${{ env.EMULATOR_RAM }}
           force-avd-creation: false
           emulator-options: -no-snapshot-save ${{ env.EMULATOR_OPTIONS }}
           disable-animations: true
