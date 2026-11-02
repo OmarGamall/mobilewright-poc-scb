@@ -2,7 +2,7 @@
 name: mobilewright-pom-builder
 description: >-
   Judgment rules for creating or changing Mobilewright TypeScript Page Objects
-  (pages/) and Components (components/) for a Flutter/Android app: new screen
+  (pages/) and Components (pages/components/) for a Flutter/Android app: new screen
   POM or reusable widget (picker, checkbox, nav bar, bottom sheet), adding or
   changing a method, locator, locator factory, verify method, or wait.
 ---
@@ -41,7 +41,7 @@ hand-check. This skill covers what lint cannot decide.
 | What | Where | Shape |
 |---|---|---|
 | A full app screen | `pages/<Name>Page.ts` | plain class, `constructor(private readonly screen: Screen)` |
-| A reusable widget (picker, checkbox, nav bar, sheet) | `components/<Name>.ts` | plain class taking `Screen`, or the host `Locator` it wraps (see `Checkbox`) |
+| A reusable widget (picker, checkbox, nav bar, sheet) | `pages/components/<Name>.ts` | plain class taking `Screen`, or the host `Locator` it wraps (see `Checkbox`) |
 
 - A page uses a component through a **private factory**
   (`private navBar() { return new BottomNavBar(this.screen); }`), never a field.
@@ -70,7 +70,7 @@ Skeleton (every `<…>` is a placeholder that needs evidence):
 ```typescript
 import type { Screen } from '@mobilewright/core';
 import { expect } from '@mobilewright/test';
-import { step } from '../utils/step';
+import { step } from '@utils/step';
 
 /**
  * @fileoverview <What this screen does, one line.>
@@ -184,7 +184,7 @@ to stay high.
   Specs never handle the keyboard. Details and what is verified:
   `references/sync-patterns.md` § Keyboard.
 
-### `@step` reporting rule (import from `../utils/step`)
+### `@step` reporting rule (import from `@utils/step`)
 
 The report should read as one domain step per user action, with the raw
 `locator.*` calls inside it. So:

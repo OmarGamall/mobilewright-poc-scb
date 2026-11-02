@@ -27,7 +27,7 @@ guessed data or several behaviors in one test. Those are on you.
 - **Fixtures:** inventory table in `fixtures/index.ts`. Every test starts
   **logged in** on the Phase 3 screen (auto fixture `authenticate`); a spec that
   needs the login screen opts out with `test.use({ loggedIn: false })`.
-- **POM methods:** `grep -rn "async <verb>" pages/ components/`, then read the
+- **POM methods:** `grep -rn "async <verb>" pages/`, then read the
   signature: params, return value, and whether it already verifies.
 - **Data:** `data/` (accounts in `data/users.ts`, feature data in
   `data/<feature>.data.ts`); types in `models/` or exported by the component

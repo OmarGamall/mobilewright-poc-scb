@@ -73,11 +73,11 @@ target screen (it only reads the screen and writes `.ui-evidence/`).
 
 ## 5. Architecture
 
-- Layout: `tests/ pages/ components/ fixtures/ utils/ config/ models/ helpers/
-  data/ scripts/ docs/`, plus generated `.ui-evidence/ bug-reports/`.
+- Layout: `tests/ pages/ fixtures/ utils/ models/ helpers/ data/ scripts/
+  docs/`, plus generated `.ui-evidence/ bug-reports/`.
   No new top-level folder without a plan.
 - Specs use fixtures from `@fixtures` and call POM methods only. One Page Object
-  per screen in `pages/`; reusable widgets in `components/`. A locator lives only
+  per screen in `pages/`; reusable widgets in `pages/components/`. A locator lives only
   in its owner.
 - Tests are independent (no order or shared mutable state); data that can
   collide is generated per run.

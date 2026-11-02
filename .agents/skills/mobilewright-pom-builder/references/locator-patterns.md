@@ -90,7 +90,7 @@ private getTermsCheckbox() {
   return new Checkbox(this.screen.getByRole('checkbox', { name: 'HOME_CHECKBOX_TERMS' }));
 }
 
-// components/Checkbox.ts
+// pages/components/Checkbox.ts
 import type { Locator } from '@mobilewright/core';
 
 export class Checkbox {

@@ -48,8 +48,8 @@ Always use this exact structure:
 
 ## Environment
 - **Application/Build:** <app version/commit if known, else "Not specified — please add">
-- **Device:** <device model and Android version, e.g. "Physical Android — AU3N025B20000393">
-- **Bundle ID:** <e.g. com.example.scb_automation_app>
+- **Device:** <device model + Android version, real or emulator>
+- **Bundle ID:** <bundleId from mobilewright.config.ts; read it, never guess>
 - **Test Framework:** Mobilewright (TypeScript)
 - **Test File:** `<path/to/test.spec.ts>`
 - **Test Name:** `<test title as written in test(...)>`
@@ -101,7 +101,7 @@ anything else relevant. Omit this section if there's nothing to add.>
 ## Saving the report
 
 - Always save the generated report as a file — never leave it only in the chat response.
-- Save location: `<project-root>/bug-reports/`. The directory exists with a `.gitkeep`.
+- Save location: `<project-root>/bug-reports/` (git-ignored); create it if missing.
 - Filename: `<test-file-name>-<short-slug-of-bug-title>.md`, e.g.
   `home.spec-date-picker-not-opening.md`. Use lowercase, hyphens, no spaces or special characters.
 - If a report for the same test/failure already exists in `bug-reports/`,

@@ -98,7 +98,7 @@ async inputUsername(username: string): Promise<void> {
   await dismissKeyboard(this.screen);
 }
 
-// components/BottomNavBar.ts — before a tap the keyboard may cover
+// pages/components/BottomNavBar.ts — before a tap the keyboard may cover
 // (today it also carries @step; per the SKILL.md layering rule that moves to the pages)
 async navigateTo(tab: NavTab): Promise<void> {
   await dismissKeyboard(this.screen);

@@ -100,4 +100,4 @@ Then write locators with `mobilewright-pom-builder`, citing
 ## Limits (today)
 
 Android real devices only, verified on one device. Emulators: same code path, not yet
-verified. iOS: refused until the configs support more platforms.
+verified. iOS: refused; the project is Android-only.

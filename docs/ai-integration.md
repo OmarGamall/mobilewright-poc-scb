@@ -64,6 +64,7 @@ keyboard (unless it is part of the state), then:
 
 ```bash
 npm run extract -- <slug>          # slug = screen + state, e.g. home, home-country-dropdown
+                                   # needs DEVICE_ID in .env (see README › Configuration)
 npm run extract -- <slug> --raw    # also save mobilecli's unfiltered dump
 ```
 
